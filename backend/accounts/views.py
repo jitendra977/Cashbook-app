@@ -1,46 +1,95 @@
-# views.py
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from .models import User
-from .serializers import UserSerializer, RegisterSerializer, CustomTokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
+from functools import wraps
+from rest_framework.response import Response
+from rest_framework import status
+
+
+from .models import User
+from .serializers import (
+    UserSerializer,
+    RegisterSerializer,
+    UpdateUserSerializer,
+    CustomTokenObtainPairSerializer
+)
+
+def user_permission_required(action_type=None):
+    """
+    Custom decorator for user permissions:
+    - superuser: full access
+    - staff & active: add/update/list only
+    - normal active user: only access own profile
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(viewset, request, *args, **kwargs):
+            user = request.user
+
+            if not user.is_authenticated:
+                return Response({"detail": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+
+            # Superuser: full access
+            if user.is_superuser:
+                return func(viewset, request, *args, **kwargs)
+
+            # Staff: cannot delete
+            if user.is_staff and user.is_active:
+                if action_type == 'delete':
+                    return Response({"detail": "Staff cannot delete users"}, status=status.HTTP_403_FORBIDDEN)
+                return func(viewset, request, *args, **kwargs)
+
+            # Normal user: can only access own profile
+            if user.is_active:
+                if action_type in ['profile', 'update_self']:
+                    return func(viewset, request, *args, **kwargs)
+                return Response({"detail": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)
+
+            return Response({"detail": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)
+
+        return wrapper
+    return decorator
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
+
 class UserViewSet(viewsets.ModelViewSet):
-    """
-    Handles:
-    - list, retrieve, create, update, delete users
-    - register via custom action
-    """
     queryset = User.objects.all()
-    serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    # Override list to restrict if needed
+    def get_serializer_class(self):
+        if self.action == 'register':
+            return RegisterSerializer
+        if self.action in ['update', 'partial_update']:
+            return UpdateUserSerializer
+        return UserSerializer
+
+    @user_permission_required(action_type='list')
     def list(self, request, *args, **kwargs):
-        # Optional: only staff can see all users
-        if not request.user.is_staff:
-            return Response({"detail": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)
         return super().list(request, *args, **kwargs)
 
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def register(self, request):
-        serializer = RegisterSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
 
+    @user_permission_required(action_type='profile')
     @action(detail=False, methods=['get', 'put'], permission_classes=[permissions.IsAuthenticated])
     def profile(self, request):
-        user = request.user
         if request.method == 'GET':
-            serializer = UserSerializer(user)
-            return Response(serializer.data)
-        elif request.method == 'PUT':
-            serializer = UserSerializer(user, data=request.data, partial=True)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response(serializer.data)
+            return Response(UserSerializer(request.user).data)
+
+        serializer = UpdateUserSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(UserSerializer(request.user).data)
+
+    @user_permission_required(action_type='delete')
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+

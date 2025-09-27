@@ -1,3 +1,4 @@
+// components/forms/UserForm.jsx
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -145,6 +146,33 @@ const UserForm = ({ open, onClose, onSubmit, user = null, loading = false, error
                 onChange={handleChange}
                 error={!!errors.phone_number}
                 helperText={errors.phone_number?.[0]}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Password"
+                name="password"
+                type="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                error={!!errors.password}
+                helperText={errors.password?.[0]}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Confirm Password"
+                name="password_confirm"
+                type="password"
+                value={formData.password_confirm}
+                onChange={handleChange}
+                required
+                error={!!errors.password_confirm}
+                helperText={errors.password_confirm?.[0]}
               />
             </Grid>
           </Grid>

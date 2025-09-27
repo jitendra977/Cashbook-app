@@ -1,46 +1,84 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import Button from '../../components/common/Button';
-import Input from '../../components/common/Input';
-import { validateRegisterForm, hasFormErrors } from '../../utils/validators';
+import UserForm from '../../components/forms/UserForm';
 import {
   Box,
   Paper,
   Typography,
   Container,
-  Stack
+  Button
 } from '@mui/material';
 
 const Register = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ username: '', email: '', password: '' });
+  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Clear previous errors
+  const handleSubmit = async (formData) => {
+    setLoading(true);
     setErrors({});
-    
-    // Validate form using validators
-    const validationErrors = validateRegisterForm(form);
-    
-    if (hasFormErrors(validationErrors)) {
-      setErrors(validationErrors);
-      return;
-    }
 
     try {
-      await register(form);
+      // For registration, we need to send FormData directly if there's a file
+      // or convert to JSON if no file upload
+      let userData;
+      let hasFile = false;
+      
+      // Check if there's a file in the FormData
+      for (let [key, value] of formData.entries()) {
+        if (key === 'profile_image' && value instanceof File) {
+          hasFile = true;
+          break;
+        }
+      }
+
+      if (hasFile) {
+        // Send FormData directly for file uploads
+        userData = formData;
+      } else {
+        // Convert to regular object for JSON requests
+        userData = {};
+        for (let [key, value] of formData.entries()) {
+          if (key !== 'profile_image') { // Skip empty profile_image
+            userData[key] = value;
+          }
+        }
+      }
+
+      await register(userData);
       navigate('/login');
     } catch (err) {
       console.error('Registration failed:', err);
-      setErrors({ 
-        general: 'Registration failed. Please try again or choose a different username.' 
-      });
+      
+      // Handle backend validation errors
+      if (err.response && err.response.data) {
+        const backendErrors = {};
+        const errorData = err.response.data;
+        
+        // Map backend errors to form fields
+        Object.keys(errorData).forEach(key => {
+          if (Array.isArray(errorData[key])) {
+            backendErrors[key] = errorData[key][0];
+          } else {
+            backendErrors[key] = errorData[key];
+          }
+        });
+        
+        setErrors(backendErrors);
+      } else {
+        setErrors({ 
+          general: 'Registration failed. Please try again or choose a different username.' 
+        });
+      }
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleClose = () => {
+    navigate('/login');
   };
 
   return (
@@ -54,7 +92,7 @@ const Register = () => {
         padding: 2,
       }}
     >
-      <Container maxWidth="sm">
+      <Container maxWidth="md">
         <Paper
           elevation={10}
           sx={{
@@ -64,85 +102,55 @@ const Register = () => {
             backgroundColor: 'rgba(255, 255, 255, 0.95)',
           }}
         >
-          <Box component="form" onSubmit={handleSubmit}>
-            <Typography
-              variant="h4"
-              component="h2"
-              gutterBottom
-              sx={{
-                textAlign: 'center',
-                fontWeight: 700,
-                color: '#333',
-                marginBottom: 3,
-              }}
-            >
-              Register
+          <Typography
+            variant="h3"
+            component="h1"
+            gutterBottom
+            sx={{
+              textAlign: 'center',
+              fontWeight: 700,
+              color: '#333',
+              marginBottom: 3,
+            }}
+          >
+            Create Your Account
+          </Typography>
+
+          <Typography
+            variant="body1"
+            sx={{
+              textAlign: 'center',
+              color: '#666',
+              marginBottom: 4,
+            }}
+          >
+            Fill in the information below to create your new account
+          </Typography>
+
+          {/* UserForm Component */}
+          <UserForm
+            open={true}
+            onClose={handleClose}
+            onSubmit={handleSubmit}
+            user={null}
+            loading={loading}
+            errors={errors}
+            embedded={true} // Add this prop to render without Dialog
+            isRegistration={true} // Add this to customize form behavior
+          />
+
+          {/* Alternative Login Link */}
+          <Box sx={{ textAlign: 'center', mt: 3 }}>
+            <Typography variant="body2" color="textSecondary">
+              Already have an account?{' '}
+              <Button
+                variant="text"
+                onClick={() => navigate('/login')}
+                sx={{ textTransform: 'none', fontWeight: 600 }}
+              >
+                Sign In Here
+              </Button>
             </Typography>
-
-            <Stack spacing={2}>
-              {errors.general && (
-                <Typography 
-                  color="error" 
-                  variant="body2" 
-                  sx={{ 
-                    textAlign: 'center', 
-                    backgroundColor: '#ffebee', 
-                    padding: 1, 
-                    borderRadius: 1 
-                  }}
-                >
-                  {errors.general}
-                </Typography>
-              )}
-
-              <Input
-                type="text"
-                label="Username"
-                placeholder="Enter your username"
-                value={form.username}
-                onChange={(e) => setForm({ ...form, username: e.target.value })}
-                error={errors.username}
-                helperText={!errors.username ? "At least 3 characters, letters, numbers, and underscores only" : undefined}
-                required
-              />
-
-              <Input
-                type="email"
-                label="Email"
-                placeholder="Enter your email address"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                error={errors.email}
-                helperText={!errors.email ? "We'll never share your email" : undefined}
-                required
-              />
-
-              <Input
-                type="password"
-                label="Password"
-                placeholder="Create a strong password"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                error={errors.password}
-                helperText={!errors.password ? "At least 6 characters" : undefined}
-                required
-              />
-
-              <Stack spacing={2} sx={{ mt: 2 }}>
-                <Button type="submit" size="large" variant="success" fullWidth>
-                  Register
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="large"
-                  onClick={() => navigate('/login')}
-                  fullWidth
-                >
-                  Back to Login
-                </Button>
-              </Stack>
-            </Stack>
           </Box>
         </Paper>
       </Container>

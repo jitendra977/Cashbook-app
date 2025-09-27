@@ -6,24 +6,20 @@ import Login from '../pages/auth/Login';
 import Register from '../pages/auth/Register';
 import NotFound from '../pages/NotFound';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
-import { useAuth } from '../context/AuthContext';
-
-// Protected route wrapper
-const PrivateRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
-};
+import UserManage from '../pages/auth/userManage';
+import ProtectedRoute from '../components/common/ProtectedRoute';
+import { AuthProvider } from '../context/AuthContext';
 
 const AppRoutes = () => {
   const router = createBrowserRouter([
     {
       path: "/",
       element: (
-        <PrivateRoute>
+        <ProtectedRoute>
           <DashboardLayout>
             <Dashboard />
           </DashboardLayout>
-        </PrivateRoute>
+        </ProtectedRoute>
       ),
     },
     {
@@ -34,12 +30,33 @@ const AppRoutes = () => {
         </DashboardLayout>
       ),
     },
+    {
+      path: "/users",
+      element: (
+        <ProtectedRoute>
+          <DashboardLayout>
+            <UserManage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: "*",
+      element: (
+        <DashboardLayout>
+          <NotFound />
+        </DashboardLayout>
+      ),
+    },
     { path: "/login", element: <Login /> },
     { path: "/register", element: <Register /> },
-    { path: "*", element: <NotFound /> },
   ]);
 
-  return <RouterProvider router={router} />;
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
 };
 
 export default AppRoutes;
