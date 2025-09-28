@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation, redirect } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import StoreList from '../../pages/store/StoreList';
 import {
   Box,
   Drawer,
@@ -35,7 +36,10 @@ import {
   ChevronLeft as ChevronLeftIcon,
   Business as BusinessIcon,
   VerifiedUser as VerifiedUserIcon,
-  Circle as CircleIcon
+  Circle as CircleIcon,
+  AccountBalance as Cashbook,
+  Api as ApiIcon,
+  Store as StoreIcon
 } from '@mui/icons-material';
 
 const DRAWER_WIDTH = 280;
@@ -93,6 +97,7 @@ const Sidebar = () => {
     navigate('/login');
   };
 
+
   const toggleCollapsed = () => {
     setCollapsed(!collapsed);
   };
@@ -103,6 +108,13 @@ const Sidebar = () => {
       icon: <DashboardIcon />,
       path: '/',
       color: '#667eea',
+      requiresAdmin: false
+    },
+    {
+      text: 'Cashbook',
+      icon: <StoreIcon />,
+      path: '/stores',
+      color: '#23ab55ff',
       requiresAdmin: false
     },
     {
@@ -139,6 +151,13 @@ const Sidebar = () => {
       path: '/about',
       color: '#17a2b8',
       requiresAdmin: false
+    },
+    {
+      text: 'API DOC',
+      icon: <ApiIcon />,  // Fixed icon reference
+      external: "http://127.0.0.1:8000/swagger/",  // Use 'external' instead of 'redirect'
+      color: '#ff6b35',
+      requiresAdmin: false
     }
   ];
 
@@ -146,8 +165,8 @@ const Sidebar = () => {
   const filteredMenuItems = menuItems.filter(item => {
     if (item.requiresAdmin) {
       // Check both user object and userDisplayData
-      const isAdmin = userDisplayData.is_superuser || userDisplayData.is_staff || 
-                     userDisplayData.username === 'admin';
+      const isAdmin = userDisplayData.is_superuser || userDisplayData.is_staff ||
+        userDisplayData.username === 'admin';
       return isAdmin;
     }
     return true;
@@ -489,7 +508,7 @@ const Sidebar = () => {
                         fontSize: '10px',
                         fontWeight: 600,
                         bgcolor: (userDisplayData.is_staff || userDisplayData.is_superuser)
-                          ? 'rgba(34, 197, 94, 0.9)' 
+                          ? 'rgba(34, 197, 94, 0.9)'
                           : 'rgba(156, 163, 175, 0.9)',
                         color: 'white',
                         border: '1px solid rgba(255,255,255,0.2)',
@@ -498,7 +517,7 @@ const Sidebar = () => {
                         '& .MuiChip-icon': { color: 'white' }
                       }}
                     />
-                    
+
                     <Chip
                       label="Online"
                       size="small"
@@ -528,14 +547,26 @@ const Sidebar = () => {
         <List sx={{ px: 2 }}>
           {filteredMenuItems.map((item) => (
             <Tooltip
-              key={item.path}
+              key={item.path || item.external}
               title={collapsed ? item.text : ''}
               placement="right"
               arrow
             >
               <ListItemButton
-                component={NavLink}
-                to={item.path}
+                onClick={() => {
+                  if (item.external) {
+                    // Open external URL in new tab
+                    window.open(item.external, '_blank', 'noopener,noreferrer');
+                  } else {
+                    // Internal navigation
+                    navigate(item.path);
+                  }
+                }}
+                component="a"
+                href={item.redirect || undefined}
+                target={item.redirect ? "_blank" : undefined}
+                rel={item.redirect ? "noopener noreferrer" : undefined}
+                {...(!item.redirect && { component: NavLink, to: item.path })}
                 sx={{
                   borderRadius: 2,
                   mb: 0.5,
@@ -575,13 +606,12 @@ const Sidebar = () => {
                     minWidth: collapsed ? 'auto' : 40,
                     color: isActive(item.path) ? '#fff' : alpha('#ffffff', 0.8),
                     mr: collapsed ? 0 : 1,
-                    '& svg': {
-                      fontSize: '20px'
-                    }
+                    '& svg': { fontSize: '20px' }
                   }}
                 >
                   {item.icon}
                 </ListItemIcon>
+
                 {!collapsed && (
                   <ListItemText
                     primary={item.text}

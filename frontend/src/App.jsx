@@ -4,6 +4,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider } from './context/AuthContext';
 import AppRoutes from './routes/AppRoutes';
+import { StoreProvider } from './context/StoreContext';
 
 const theme = createTheme({
   palette: {
@@ -20,9 +21,11 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AuthProvider>
+      <StoreProvider>
+        <AuthProvider>
         <AppRoutes />
       </AuthProvider>
+      </StoreProvider>
     </ThemeProvider>
   );
 }

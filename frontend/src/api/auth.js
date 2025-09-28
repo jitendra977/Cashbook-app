@@ -4,7 +4,7 @@ import api from './index.js';
 export const authAPI = {
   login: async (credentials) => {
     try {
-      const response = await api.post('/login/', credentials, {
+      const response = await api.post('auth/login/', credentials, {
         timeout: 10000, // 10 second timeout
         timeoutErrorMessage: 'Connection timeout. Please try again.'
       });
@@ -36,7 +36,7 @@ export const authAPI = {
     }
 
     try {
-      const response = await api.post('/users/register/', userData, config);
+      const response = await api.post('auth/users/register/', userData, config);
       return response.data;
     } catch (error) {
       if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
@@ -51,7 +51,7 @@ export const authAPI = {
 
   refreshToken: async (refreshToken) => {
     try {
-      const response = await api.post('/token/refresh/', { refresh: refreshToken }, {
+      const response = await api.post('auth/token/refresh/', { refresh: refreshToken }, {
         timeout: 10000
       });
       return response.data;

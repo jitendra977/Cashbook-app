@@ -5,7 +5,7 @@ export const usersAPI = {
   // Profile management
   getProfile: async () => {
     try {
-      const response = await api.get('/users/profile/');
+      const response = await api.get('auth/users/profile/');
       return response.data;
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -18,7 +18,7 @@ export const usersAPI = {
     try {
       console.log('Sending verification token:', token);
       
-      const response = await api.post('/users/verify_email/', { 
+      const response = await api.post('auth/users/verify_email/', { 
         token: token 
       });
       
@@ -36,7 +36,7 @@ export const usersAPI = {
 
   resendVerification: async () => {
     try {
-      const response = await api.post('/users/resend_verification/');
+      const response = await api.post('auth/users/resend_verification/');
       return response.data;
     } catch (error) {
       console.error('Error resending verification:', error);
@@ -63,7 +63,7 @@ export const usersAPI = {
         userData = JSON.stringify(userData);
       }
 
-      const response = await api.put('/users/profile/', userData, config);
+      const response = await api.put('auth/users/profile/', userData, config);
       return response.data;
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -80,7 +80,7 @@ export const usersAPI = {
         confirm_password: passwordData.confirm_password
       };
 
-      const response = await api.post('/users/change_password/', backendData);
+      const response = await api.post('auth/users/change_password/', backendData);
       return response.data;
     } catch (error) {
       console.error('Error updating password:', error);
@@ -96,7 +96,7 @@ export const usersAPI = {
       const formData = new FormData();
       formData.append('profile_image', imageFile);
 
-      const response = await api.patch('/users/profile/', formData, {
+      const response = await api.patch('auth/users/profile/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -117,7 +117,7 @@ export const usersAPI = {
 
   deleteProfileImage: async () => {
     try {
-      const response = await api.patch('/users/profile/', {
+      const response = await api.patch('auth/users/profile/', {
         profile_image: null
       });
       return response.data;
@@ -131,7 +131,7 @@ export const usersAPI = {
   getAllUsers: async (params = {}) => {
     try {
       const queryString = new URLSearchParams(params).toString();
-      const url = queryString ? `/users/?${queryString}` : '/users/';
+      const url = queryString ? `auth/users?${queryString}` : 'auth/users/';
       const response = await api.get(url);
       return response.data;
     } catch (error) {
@@ -142,7 +142,7 @@ export const usersAPI = {
 
   getUser: async (id) => {
     try {
-      const response = await api.get(`/users/${id}/`);
+      const response = await api.get(`auth/users/${id}/`);
       return response.data;
     } catch (error) {
       console.error('Error fetching user:', error);
@@ -160,7 +160,7 @@ export const usersAPI = {
         };
       }
 
-      const response = await api.post('/users/', userData, config);
+      const response = await api.post('auth/users/', userData, config);
       return response.data;
     } catch (error) {
       console.error('Error creating user:', error);
@@ -178,7 +178,7 @@ export const usersAPI = {
         };
       }
 
-      const response = await api.patch(`/users/${id}/`, userData, config);
+      const response = await api.patch(`auth/users/${id}/`, userData, config);
       return response.data;
     } catch (error) {
       console.error('Error updating user:', error);
@@ -188,7 +188,7 @@ export const usersAPI = {
 
   deleteUser: async (id) => {
     try {
-      const response = await api.delete(`/users/${id}/`);
+      const response = await api.delete(`auth/users/${id}/`);
       return response.data;
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -199,7 +199,7 @@ export const usersAPI = {
   // Account settings
   updateAccountSettings: async (settings) => {
     try {
-      const response = await api.patch('/users/settings/', settings);
+      const response = await api.patch('auth/users/settings/', settings);
       return response.data;
     } catch (error) {
       console.error('Error updating account settings:', error);
@@ -209,7 +209,7 @@ export const usersAPI = {
 
   getAccountSettings: async () => {
     try {
-      const response = await api.get('/users/settings/');
+      const response = await api.get('auth/users/settings/');
       return response.data;
     } catch (error) {
       console.error('Error fetching account settings:', error);
@@ -220,7 +220,7 @@ export const usersAPI = {
   // Account deactivation
   deactivateAccount: async (password) => {
     try {
-      const response = await api.post('/users/deactivate/', { password });
+      const response = await api.post('auth/users/deactivate/', { password });
       return response.data;
     } catch (error) {
       console.error('Error deactivating account:', error);
@@ -231,7 +231,7 @@ export const usersAPI = {
   // Export user data (GDPR compliance)
   exportUserData: async () => {
     try {
-      const response = await api.get('/users/export/', {
+      const response = await api.get('auth/users/export/', {
         responseType: 'blob'
       });
 

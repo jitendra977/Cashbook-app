@@ -12,6 +12,7 @@ import { AuthProvider } from '../context/AuthContext';
 import Profile from '../pages/auth/Profile';
 import AddUser from '../pages/auth/AddUser';
 import EmailVerification from '../pages/auth/EmailVerification'
+import StoreList from '../pages/store/StoreList'
 
 const AppRoutes = () => {
   const router = createBrowserRouter([
@@ -59,6 +60,16 @@ const AppRoutes = () => {
         <ProtectedRoute>
           <DashboardLayout>
             <Profile />
+          </DashboardLayout>
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: "/stores",
+      element: (
+        <ProtectedRoute>
+          <DashboardLayout>
+            <StoreList />
           </DashboardLayout>
         </ProtectedRoute>
       ),
