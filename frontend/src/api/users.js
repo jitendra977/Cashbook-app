@@ -12,12 +12,12 @@ export const usersAPI = {
       throw error;
     }
   },
-  
+
   updateProfile: async (userData) => {
     try {
       // Handle both FormData (for image uploads) and regular objects
       const config = {};
-      
+
       if (userData instanceof FormData) {
         config.headers = {
           'Content-Type': 'multipart/form-data',
@@ -35,7 +35,14 @@ export const usersAPI = {
   // Password management
   updatePassword: async (passwordData) => {
     try {
-      const response = await api.patch('/users/change-password/', passwordData);
+      // Transform field names to match backend expectations
+      const backendData = {
+        old_password: passwordData.old_password,
+        new_password: passwordData.new_password,
+        confirm_password: passwordData.confirm_password
+      };
+
+      const response = await api.post('/users/change_password/', backendData);
       return response.data;
     } catch (error) {
       console.error('Error updating password:', error);
@@ -81,7 +88,7 @@ export const usersAPI = {
           console.log('Upload progress:', percentCompleted);
         }
       });
-      
+
       return response.data;
     } catch (error) {
       console.error('Error uploading profile image:', error);
@@ -91,8 +98,8 @@ export const usersAPI = {
 
   deleteProfileImage: async () => {
     try {
-      const response = await api.patch('/users/profile/', { 
-        profile_image: null 
+      const response = await api.patch('/users/profile/', {
+        profile_image: null
       });
       return response.data;
     } catch (error) {
@@ -113,7 +120,7 @@ export const usersAPI = {
       throw error;
     }
   },
-  
+
   getUser: async (id) => {
     try {
       const response = await api.get(`/users/${id}/`);
@@ -123,11 +130,11 @@ export const usersAPI = {
       throw error;
     }
   },
-  
+
   createUser: async (userData) => {
     try {
       const config = {};
-      
+
       if (userData instanceof FormData) {
         config.headers = {
           'Content-Type': 'multipart/form-data',
@@ -141,11 +148,11 @@ export const usersAPI = {
       throw error;
     }
   },
-  
+
   updateUser: async (id, userData) => {
     try {
       const config = {};
-      
+
       if (userData instanceof FormData) {
         config.headers = {
           'Content-Type': 'multipart/form-data',
@@ -159,7 +166,7 @@ export const usersAPI = {
       throw error;
     }
   },
-  
+
   deleteUser: async (id) => {
     try {
       const response = await api.delete(`/users/${id}/`);
@@ -208,7 +215,7 @@ export const usersAPI = {
       const response = await api.get('/users/export/', {
         responseType: 'blob'
       });
-      
+
       // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
@@ -217,7 +224,7 @@ export const usersAPI = {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      
+
       return response.data;
     } catch (error) {
       console.error('Error exporting user data:', error);
