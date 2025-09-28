@@ -1,4 +1,4 @@
-// src/components/EmailVerification.jsx - Updated version
+// src/components/EmailVerification.jsx - Enhanced debugging
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -10,7 +10,8 @@ import {
   Button,
   Card,
   CardContent,
-  Alert
+  Alert,
+  Chip
 } from '@mui/material';
 import { CheckCircle, Error, Email, Refresh } from '@mui/icons-material';
 import { usersAPI } from '../../api/users';
@@ -19,13 +20,20 @@ const EmailVerification = () => {
   const { token } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [status, setStatus] = useState('verifying'); // 'verifying', 'success', 'error'
+  const [status, setStatus] = useState('verifying');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [debugInfo, setDebugInfo] = useState('');
 
   useEffect(() => {
-    // Check for token in URL parameters or query string
     const verificationToken = token || searchParams.get('token');
+    
+    console.log('Email verification component mounted');
+    console.log('URL token:', token);
+    console.log('Query token:', searchParams.get('token'));
+    console.log('Final token to verify:', verificationToken);
+    
+    setDebugInfo(`Token: ${verificationToken}`);
     
     if (verificationToken) {
       verifyEmail(verificationToken);
@@ -38,26 +46,29 @@ const EmailVerification = () => {
   const verifyEmail = async (verificationToken) => {
     try {
       setLoading(true);
-      console.log('Verifying token:', verificationToken);
+      console.log('Starting verification for token:', verificationToken);
       
-      // Make POST request with token in request body
       const response = await usersAPI.verifyEmail(verificationToken);
       
+      console.log('Verification successful:', response);
       setStatus('success');
       setMessage(response.message || 'Email verified successfully!');
     } catch (error) {
-      console.error('Verification error details:', {
-        status: error.response?.status,
-        data: error.response?.data,
-        token: verificationToken
+      console.error('Verification failed:', {
+        error: error.message,
+        response: error.response?.data,
+        status: error.response?.status
       });
       
       setStatus('error');
       const errorDetail = error.response?.data?.detail || 
-                         error.response?.data?.token?.[0] ||
                          error.response?.data?.error ||
+                         error.response?.data?.token?.[0] ||
                          'Invalid or expired verification link';
       setMessage(errorDetail);
+      
+      // Set debug info
+      setDebugInfo(`Error: ${errorDetail}, Status: ${error.response?.status}`);
     } finally {
       setLoading(false);
     }
@@ -79,16 +90,18 @@ const EmailVerification = () => {
 
   return (
     <Container maxWidth="sm">
-      <Box
-        sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          py: 4
-        }}
-      >
+      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', py: 4 }}>
         <Paper elevation={3} sx={{ p: 4, borderRadius: 3, width: '100%' }}>
+          
+          {/* Debug Info - Remove in production */}
+          {process.env.NODE_ENV === 'development' && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body2">
+                <strong>Debug Info:</strong> {debugInfo}
+              </Typography>
+            </Alert>
+          )}
+          
           <Box textAlign="center">
             {status === 'verifying' && (
               <Card>
@@ -105,9 +118,11 @@ const EmailVerification = () => {
                     Please wait while we verify your email address.
                   </Typography>
                   {token && (
-                    <Typography variant="caption" color="textSecondary" sx={{ mt: 2, display: 'block' }}>
-                      Token: {token.substring(0, 8)}...
-                    </Typography>
+                    <Chip 
+                      label={`Token: ${token.substring(0, 8)}...`} 
+                      variant="outlined" 
+                      sx={{ mt: 2 }} 
+                    />
                   )}
                 </CardContent>
               </Card>
@@ -155,10 +170,10 @@ const EmailVerification = () => {
                   <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
                     <Button
                       variant="outlined"
-                      onClick={() => navigate('/login')}
+                      onClick={() => navigate('/')}
                       disabled={loading}
                     >
-                      Go to Login
+                      Go to DASHBOARD
                     </Button>
                     <Button
                       variant="contained"

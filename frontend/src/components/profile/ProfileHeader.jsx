@@ -54,8 +54,25 @@ export const ProfileHeader = ({
     return { label: 'Inactive', color: 'error', variant: 'filled' };
   };
 
+  const getVerificationBadge = () => {
+    if (profile?.is_verified) {
+      return { label: 'Verified', color: 'success', icon: <Verified /> };
+    }
+    return { label: 'Unverified', color: 'warning', icon: <Close /> };
+  };
+
   const roleBadge = getRoleBadge();
   const statusBadge = getStatusBadge();
+  const verificationBadge = getVerificationBadge();
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Never';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
   return (
     <Paper 
@@ -212,8 +229,8 @@ export const ProfileHeader = ({
               @{profile?.username}
             </Typography>
             
-            {/* Role and Status Chips */}
-            <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+            {/* Role, Status, and Verification Chips */}
+            <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap' }}>
               <Chip
                 icon={roleBadge.icon}
                 label={roleBadge.label}
@@ -225,6 +242,13 @@ export const ProfileHeader = ({
                 label={statusBadge.label}
                 color={statusBadge.color}
                 variant={statusBadge.variant}
+                size="small"
+              />
+              <Chip
+                icon={verificationBadge.icon}
+                label={verificationBadge.label}
+                color={verificationBadge.color}
+                variant="outlined"
                 size="small"
               />
             </Stack>
@@ -239,7 +263,8 @@ export const ProfileHeader = ({
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1,
-                mb: 0.5
+                mb: 0.5,
+                wordBreak: 'break-all'
               }}
             >
               {profile?.email}
@@ -316,29 +341,68 @@ export const ProfileHeader = ({
           gap: 2
         }}
       >
-        <Typography 
-          variant="body2" 
-          sx={{ 
-            color: theme.palette.text.secondary,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1
-          }}
-        >
-          Member since: {profile?.date_joined ? new Date(profile.date_joined).toLocaleDateString() : 'N/A'}
-        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              color: theme.palette.text.secondary,
+              fontWeight: 600
+            }}
+          >
+            Member since
+          </Typography>
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              color: theme.palette.text.primary,
+              fontWeight: 500
+            }}
+          >
+            {formatDate(profile?.date_joined)}
+          </Typography>
+        </Box>
         
-        <Typography 
-          variant="body2" 
-          sx={{ 
-            color: theme.palette.text.secondary,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1
-          }}
-        >
-          Last login: {profile?.last_login ? new Date(profile.last_login).toLocaleDateString() : 'N/A'}
-        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              color: theme.palette.text.secondary,
+              fontWeight: 600
+            }}
+          >
+            Last login
+          </Typography>
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              color: theme.palette.text.primary,
+              fontWeight: 500
+            }}
+          >
+            {formatDate(profile?.last_login)}
+          </Typography>
+        </Box>
+
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              color: theme.palette.text.secondary,
+              fontWeight: 600
+            }}
+          >
+            Profile updated
+          </Typography>
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              color: theme.palette.text.primary,
+              fontWeight: 500
+            }}
+          >
+            {formatDate(profile?.updated_at)}
+          </Typography>
+        </Box>
       </Box>
 
       {/* Loading Overlay */}

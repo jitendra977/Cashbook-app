@@ -189,7 +189,6 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 #========================Email Verification System ===================
-
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'  # or your email provider
 EMAIL_PORT = 587
@@ -197,5 +196,7 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'jitendrakhadka444@gmail.com'
 EMAIL_HOST_PASSWORD = 'xpjo wrpg akxt tlik'
 DEFAULT_FROM_EMAIL = 'jitendrakhadka444@gmail.com'
-FRONTEND_URL = 'http://localhost:3000'
+SUPPORT_EMAIL = 'nishanaweb@gmail.com'
 #========================Email Verification System ===================
+
+FRONTEND_URL = 'http://localhost:3000'

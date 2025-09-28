@@ -73,28 +73,20 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('access_token', data.access);
       localStorage.setItem('refresh_token', data.refresh);
 
-      // Create comprehensive user object
+      // Use the complete user object from API response
+      // The API should already include all user fields including last_login
       const userData = {
-        // From API response
+        // Spread the complete user object from API first
         ...data.user,
+        
+        // Then add the token
         token: data.access,
 
-        // Ensure required fields exist with defaults
-        username: data.user?.username || credentials.username || credentials.email?.split('@')[0] || 'User',
-        email: data.user?.email || credentials.email || 'user@example.com',
-        first_name: data.user?.first_name || '',
-        last_name: data.user?.last_name || '',
-        is_staff: data.user?.is_staff || false,
-        is_superuser: data.user?.is_superuser || false,
-        is_verified: data.user?.is_verified || false,
-        is_active: data.user?.is_active !== false, // Default to true
-        profile_image: data.user?.profile_image || null,
-
-        // Add timestamp for debugging
+        // Add timestamp for debugging (optional)
         loginTime: new Date().toISOString()
       };
 
-      console.log('Setting user data:', userData);
+      console.log('Setting user data with last_login:', userData.last_login);
 
       setUser(userData);
       localStorage.setItem('user_data', JSON.stringify(userData));

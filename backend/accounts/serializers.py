@@ -3,10 +3,14 @@ from django.contrib.auth import authenticate
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import User
-
+from django.utils import timezone
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for user model (read operations)."""
+    
+    last_login = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)
+    created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)
+    updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)
     
     class Meta:
         model = User
@@ -14,11 +18,11 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'username', 'email', 'first_name', 'last_name',
             'is_active', 'is_staff', 'is_superuser', 'date_joined',
             'phone_number', 'profile_image', 'groups', 'user_permissions',
-            'is_verified', 'created_at', 'updated_at'  # Added email verification fields
+            'is_verified', 'created_at', 'updated_at' ,'last_login','verification_token'
         ]
         read_only_fields = [
             'id', 'is_staff', 'is_superuser', 'date_joined',
-            'groups', 'user_permissions', 'is_verified', 'created_at', 'updated_at'
+            'groups', 'user_permissions', 'is_verified', 'last_login', 'created_at', 'updated_at', 'verification_token',
         ]
 
 
@@ -177,6 +181,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     Enhanced JWT token serializer supporting email/username login.
     """
     
+    
     def validate(self, attrs):
         """Authenticate user via username or email."""
         username_or_email = attrs.get("username")
@@ -211,17 +216,23 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 "detail": "Account is disabled"
             })
 
-        # Check if email is verified (optional - you can make this required)
-        if not user.is_verified:
-            raise serializers.ValidationError({
-                "detail": "Please verify your email address before logging in"
-            })
+        # # Check if email is verified (optional - you can make this required)
+        # if not user.is_verified:
+        #     raise serializers.ValidationError({
+        #         "detail": "Please verify your email address before logging in"
+        #     })
 
+        # Update the custom last_login field
+        user.last_login = timezone.now()
+        user.save(update_fields=['last_login', 'updated_at'])
+        
         # Generate tokens
         refresh = self.get_token(user)
+        
+        user_data = UserSerializer(user).data
         
         return {
             "refresh": str(refresh),
             "access": str(refresh.access_token),
-            "user": UserSerializer(user).data,
+            "user": user_data,
         }

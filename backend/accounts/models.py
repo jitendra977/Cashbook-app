@@ -3,7 +3,37 @@ from django.db import models
 from django.core.mail import send_mail
 from django.conf import settings
 import uuid
-
+try:
+    from .utils.email_service import AdvancedEmailService
+except ImportError:
+    # Fallback if import fails
+    class AdvancedEmailService:
+        @staticmethod
+        def send_verification_email(user, verification_url):
+            # Fallback to basic email
+            try:
+                subject = 'Verify Your Email Address'
+                message = f"""
+                Hi {user.username},
+                
+                Please verify your email address by clicking the link below:
+                {verification_url}
+                
+                Thanks,
+                Your App Team
+                """
+                
+                send_mail(
+                    subject,
+                    message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [user.email],
+                    fail_silently=False,
+                )
+                return True
+            except Exception:
+                return False
+            
 def user_profile_image_path(instance, filename):
     return f'profile_images/user_{instance.id}/{filename}'
 
@@ -18,55 +48,29 @@ class User(AbstractUser):
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    last_login = models.DateTimeField(null=True, blank=True, verbose_name="Last Frontend Login")
     
+    def update_last_login(self):
+        """Update the custom last_login field for frontend logins"""
+        from django.utils import timezone
+        self.last_login = timezone.now()
+        self.save(update_fields=['last_login', 'updated_at'])
+        return self.last_login
+        
     def send_verification_email(self):  
-        """Send email verification link to user"""
+        """Send beautiful verification email to user"""
         if not self.email:
             return False
             
-        subject = 'Please verify your email address'
+        # Generate verification URL
         verification_url = f"{settings.FRONTEND_URL}/verify-email/{self.verification_token}/"
         
-        # Using HTML email for better formatting
-        message = f"""
-        Hi {self.username},
-        
-        Please click the link below to verify your email address:
-        {verification_url}
-        
-        If you didn't create this account, please ignore this email.
-        
-        Thanks,
-        Your App Team
-        """
-        
-        html_message = f"""
-        <html>
-            <body>
-                <p>Hi {self.username},</p>
-                <p>Please click the link below to verify your email address:</p>
-                <p><a href="{verification_url}">Verify Email Address</a></p>
-                <p>If you didn't create this account, please ignore this email.</p>
-                <br>
-                <p>Thanks,<br>Your App Team</p>
-            </body>
-        </html>
-        """
-        
-        try:
-            send_mail(
-                subject=subject,
-                message=message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[self.email],
-                html_message=html_message,
-                fail_silently=False,
-            )
-            return True
-        except Exception as e:
-            # Log the error in production
-            print(f"Failed to send verification email: {e}")
-            return False
+        # Use advanced email service
+        return AdvancedEmailService.send_verification_email(self, verification_url)
+    
+    def send_welcome_email(self):
+        """Send welcome email after verification"""
+        return AdvancedEmailService.send_welcome_email(self)
     # =================================================================
     
     # Override default reverse relations to avoid clash

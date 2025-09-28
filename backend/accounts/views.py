@@ -212,22 +212,27 @@ class UserViewSet(viewsets.ModelViewSet):
         """Verify user's email address using verification token"""
         token = None
         
+        print(f"=== EMAIL VERIFICATION DEBUG ===")
+        print(f"Request method: {request.method}")
+        print(f"Request data: {request.data}")
+        print(f"Query params: {request.query_params}")
+        
         # Handle GET request (token in URL)
         if request.method == 'GET':
             token = request.query_params.get('token')
-            if not token:
-                # Try to get token from URL path if using /verify-email/<token>/
-                # This requires custom URL configuration
-                return Response({
-                    'error': 'Token parameter is required'
-                }, status=status.HTTP_400_BAD_REQUEST)
+            print(f"GET token from query params: {token}")
         
         # Handle POST request (token in body)
         elif request.method == 'POST':
             serializer = EmailVerificationSerializer(data=request.data)
-            if not serializer.is_valid():
+            if serializer.is_valid():
+                token = serializer.validated_data['token']
+                print(f"POST token from body: {token}")
+            else:
+                print(f"Serializer errors: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            token = serializer.validated_data['token']
+        
+        print(f"Token to verify: {token}")
         
         if not token:
             return Response({
@@ -235,9 +240,24 @@ class UserViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         try:
+            # Convert token to UUID if it's a string
+            if isinstance(token, str):
+                try:
+                    token = uuid.UUID(token)
+                except ValueError:
+                    print(f"Invalid UUID format: {token}")
+                    return Response({
+                        'error': 'Invalid token format'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            
+            print(f"Looking for user with token: {token}")
+            
             user = User.objects.get(verification_token=token)
+            print(f"User found: {user.username} (ID: {user.id})")
+            print(f"User verification status before: {user.is_verified}")
             
             if user.is_verified:
+                print("User already verified")
                 return Response({
                     'message': 'Email already verified',
                     'detail': 'Your email address was already verified.'
@@ -246,11 +266,16 @@ class UserViewSet(viewsets.ModelViewSet):
             # Mark user as verified
             user.is_verified = True
             user.save()
+            print(f"User verification status after: {user.is_verified}")
             
-            # For GET requests, redirect to frontend success page
-            if request.method == 'GET':
-                frontend_url = f"{settings.FRONTEND_URL}/verify-email/success/"
-                return redirect(frontend_url)
+            # Send welcome email
+            try:
+                user.send_welcome_email()
+                print("Welcome email sent")
+            except Exception as e:
+                print(f"Welcome email failed: {e}")
+            
+            print("=== VERIFICATION SUCCESS ===")
             
             return Response({
                 'message': 'Email verified successfully!',
@@ -258,14 +283,19 @@ class UserViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_200_OK)
             
         except User.DoesNotExist:
-            if request.method == 'GET':
-                frontend_url = f"{settings.FRONTEND_URL}/verify-email/error/"
-                return redirect(frontend_url)
+            print(f"=== VERIFICATION FAILED ===")
+            print(f"No user found with token: {token}")
+            
+            # Debug: List all users and their tokens
+            all_users = User.objects.all()
+            print("All users and their tokens:")
+            for u in all_users:
+                print(f"  {u.username}: {u.verification_token} (verified: {u.is_verified})")
             
             return Response({
                 'error': 'Invalid or expired verification token'
             }, status=status.HTTP_400_BAD_REQUEST)
-    
+            
     @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def resend_verification(self, request):  # NOTE: underscore, not hyphen
         """Resend verification email to authenticated user"""

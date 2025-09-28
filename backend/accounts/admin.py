@@ -8,7 +8,7 @@ from django.utils.html import format_html
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     # Fields displayed in admin list
-    list_display = ('id', 'username', 'email', 'first_name', 'last_name', 'phone_number', 'is_staff', 'is_active','is_verified')
+    list_display = ('id', 'username', 'email', 'first_name', 'last_name', 'phone_number', 'is_staff', 'is_active','is_verified','last_login')
     list_filter = ('is_staff', 'is_superuser', 'is_active', 'groups')
     search_fields = ('username', 'email', 'first_name', 'last_name')
     ordering = ('id',)
@@ -17,7 +17,7 @@ class UserAdmin(BaseUserAdmin):
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
         (_('Personal info'), {'fields': ('first_name', 'last_name', 'email', 'phone_number', 'profile_image')}),
-        (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        (_('Permissions'), {'fields': ('is_active', 'is_verified','is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         (_('Important dates'), {'fields': ('last_login', 'date_joined')}),
     )
 

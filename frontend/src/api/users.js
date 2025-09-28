@@ -14,12 +14,22 @@ export const usersAPI = {
   },
 
 // Email verification methods 
-  verifyEmail: async (token) => {
+ verifyEmail: async (token) => {
     try {
-      const response = await api.post('/users/verify_email/', { token });
+      console.log('Sending verification token:', token);
+      
+      const response = await api.post('/users/verify_email/', { 
+        token: token 
+      });
+      
+      console.log('Verification response:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error verifying email:', error);
+      console.error('Verification error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        token: token
+      });
       throw error;
     }
   },
