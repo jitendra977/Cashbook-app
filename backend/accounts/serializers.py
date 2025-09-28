@@ -1,7 +1,7 @@
+# serializers.py
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-
 from .models import User
 
 
@@ -13,11 +13,12 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name',
             'is_active', 'is_staff', 'is_superuser', 'date_joined',
-            'phone_number', 'profile_image', 'groups', 'user_permissions'
+            'phone_number', 'profile_image', 'groups', 'user_permissions',
+            'is_verified', 'created_at', 'updated_at'  # Added email verification fields
         ]
         read_only_fields = [
             'id', 'is_staff', 'is_superuser', 'date_joined',
-            'groups', 'user_permissions'
+            'groups', 'user_permissions', 'is_verified', 'created_at', 'updated_at'
         ]
 
 
@@ -58,7 +59,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             })
             
         return attrs
-
+    
     def create(self, validated_data):
         """Create and return a new user instance."""
         validated_data.pop('password_confirm')
@@ -68,7 +69,23 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
         
+        # Send verification email after user creation
+        user.send_verification_email()
         return user
+
+
+# Email verification serializer
+class EmailVerificationSerializer(serializers.Serializer):
+    token = serializers.UUIDField()
+
+    def validate_token(self, value):
+        try:
+            user = User.objects.get(verification_token=value)
+            if user.is_verified:
+                raise serializers.ValidationError("Email is already verified")
+            return value
+        except User.DoesNotExist:
+            raise serializers.ValidationError("Invalid or expired verification token")
 
 
 class UpdateUserSerializer(serializers.ModelSerializer):
@@ -192,6 +209,12 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         if not user.is_active:
             raise serializers.ValidationError({
                 "detail": "Account is disabled"
+            })
+
+        # Check if email is verified (optional - you can make this required)
+        if not user.is_verified:
+            raise serializers.ValidationError({
+                "detail": "Please verify your email address before logging in"
             })
 
         # Generate tokens

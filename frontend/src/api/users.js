@@ -13,31 +13,53 @@ export const usersAPI = {
     }
   },
 
-updateProfile: async (userData) => {
-  try {
-    const config = {};
-
-    if (userData instanceof FormData) {
-      // For FormData (file uploads), let browser set Content-Type with boundary
-      config.headers = {
-        'Content-Type': 'multipart/form-data',
-      };
-    } else {
-      // For JSON data, set Content-Type explicitly
-      config.headers = {
-        'Content-Type': 'application/json',
-      };
-      // Convert object to JSON string
-      userData = JSON.stringify(userData);
+// Email verification methods 
+  verifyEmail: async (token) => {
+    try {
+      const response = await api.post('/users/verify_email/', { token });
+      return response.data;
+    } catch (error) {
+      console.error('Error verifying email:', error);
+      throw error;
     }
+  },
 
-    const response = await api.put('/users/profile/', userData, config);
-    return response.data;
-  } catch (error) {
-    console.error('Error updating profile:', error);
-    throw error;
-  }
-},
+  resendVerification: async () => {
+    try {
+      const response = await api.post('/users/resend_verification/');
+      return response.data;
+    } catch (error) {
+      console.error('Error resending verification:', error);
+      throw error;
+    }
+  },
+
+
+  updateProfile: async (userData) => {
+    try {
+      const config = {};
+
+      if (userData instanceof FormData) {
+        // For FormData (file uploads), let browser set Content-Type with boundary
+        config.headers = {
+          'Content-Type': 'multipart/form-data',
+        };
+      } else {
+        // For JSON data, set Content-Type explicitly
+        config.headers = {
+          'Content-Type': 'application/json',
+        };
+        // Convert object to JSON string
+        userData = JSON.stringify(userData);
+      }
+
+      const response = await api.put('/users/profile/', userData, config);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
+  },
   // Password management
   updatePassword: async (passwordData) => {
     try {
@@ -56,26 +78,7 @@ updateProfile: async (userData) => {
     }
   },
 
-  // Email verification
-  requestEmailVerification: async () => {
-    try {
-      const response = await api.post('/users/verify-email/');
-      return response.data;
-    } catch (error) {
-      console.error('Error requesting email verification:', error);
-      throw error;
-    }
-  },
 
-  verifyEmail: async (token) => {
-    try {
-      const response = await api.post('/users/verify-email/confirm/', { token });
-      return response.data;
-    } catch (error) {
-      console.error('Error verifying email:', error);
-      throw error;
-    }
-  },
 
   // Profile image management
   uploadProfileImage: async (imageFile) => {
@@ -235,6 +238,19 @@ updateProfile: async (userData) => {
     } catch (error) {
       console.error('Error exporting user data:', error);
       throw error;
+    }
+  }
+};
+export const debugVerification = {
+  checkToken: async (token) => {
+    try {
+      console.log('Verification Token:', token);
+      console.log('Token Type:', typeof token);
+      console.log('API Base URL:', process.env.REACT_APP_API_URL);
+      return true;
+    } catch (error) {
+      console.error('Debug error:', error);
+      return false;
     }
   }
 };

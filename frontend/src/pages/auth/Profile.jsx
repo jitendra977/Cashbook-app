@@ -21,12 +21,20 @@ import {
   Stack,
   useTheme,
   alpha,
-  Slide
+  Slide,
+  Card,
+  CardContent,
+  IconButton
 } from '@mui/material';
 import {
   Delete,
   ArrowBack,
-  CloudUpload
+  CloudUpload,
+  Email,
+  Refresh,
+  CheckCircle,
+  Warning,
+  Close
 } from '@mui/icons-material';
 import { usersAPI } from '../../api/users';
 import { useAuth } from '../../context/AuthContext';
@@ -37,9 +45,126 @@ import {
   ProfileForm,
   ProfileView
 } from '../../components/profile';
+
 const Transition = React.forwardRef(function Transition(props, ref) {
   return <Slide direction="up" ref={ref} {...props} />;
 });
+
+// Email Verification Alert Component
+const EmailVerificationAlert = ({ user, onResend, onDismiss }) => {
+  const [loading, setLoading] = useState(false);
+  const [lastSent, setLastSent] = useState(null);
+
+  const handleResend = async () => {
+    // Prevent spam - limit to 1 request per minute
+    if (lastSent && Date.now() - lastSent < 60000) {
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      await onResend();
+      setLastSent(Date.now());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (user?.is_verified) {
+    return null;
+  }
+
+  return (
+    <Zoom in timeout={300}>
+      <Card 
+        elevation={0}
+        sx={{ 
+          mb: 3, 
+          borderRadius: 3,
+          border: '2px solid',
+          borderColor: 'warning.main',
+          bgcolor: alpha('#ffc107', 0.1)
+        }}
+      >
+        <CardContent sx={{ p: 3 }}>
+          <Box display="flex" alignItems="flex-start" gap={2}>
+            <Warning sx={{ color: 'warning.main', fontSize: 32, flexShrink: 0 }} />
+            
+            <Box flex={1}>
+              <Typography variant="h6" fontWeight="bold" gutterBottom>
+                Verify Your Email Address
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+                We sent a verification link to <strong>{user?.email}</strong>. 
+                Please check your inbox and spam folder.
+              </Typography>
+              
+              <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={loading ? <CircularProgress size={16} /> : <Email />}
+                  onClick={handleResend}
+                  disabled={loading || (lastSent && Date.now() - lastSent < 60000)}
+                  sx={{
+                    bgcolor: 'warning.main',
+                    color: 'white',
+                    '&:hover': { bgcolor: 'warning.dark' }
+                  }}
+                >
+                  {loading ? 'Sending...' : 
+                   lastSent && Date.now() - lastSent < 60000 ? 'Sent! Wait 1min' : 
+                   'Resend Verification'}
+                </Button>
+                
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={onDismiss}
+                  sx={{ color: 'text.secondary' }}
+                >
+                  Dismiss
+                </Button>
+              </Box>
+              
+              {lastSent && (
+                <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
+                  Last sent: {new Date(lastSent).toLocaleTimeString()}
+                </Typography>
+              )}
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+    </Zoom>
+  );
+};
+
+// Email Verification Success Alert
+const EmailVerificationSuccess = ({ onDismiss }) => {
+  return (
+    <Zoom in timeout={300}>
+      <Alert
+        severity="success"
+        sx={{ mb: 3, borderRadius: 2 }}
+        action={
+          <IconButton
+            color="inherit"
+            size="small"
+            onClick={onDismiss}
+          >
+            <Close />
+          </IconButton>
+        }
+        icon={<CheckCircle />}
+      >
+        <Typography variant="body2">
+          <strong>Email Verified!</strong> Your account is now fully activated and you can access all features.
+        </Typography>
+      </Alert>
+    </Zoom>
+  );
+};
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
@@ -56,12 +181,49 @@ const Profile = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+
+  // Email verification states
+  const [showVerificationAlert, setShowVerificationAlert] = useState(true);
+  const [showVerificationSuccess, setShowVerificationSuccess] = useState(false);
+  const [verificationLoading, setVerificationLoading] = useState(false);
+
   const navigate = useNavigate();
   const theme = useTheme();
 
   useEffect(() => {
     fetchProfile();
+
+    // Check URL parameters for verification success
+    const urlParams = new URLSearchParams(window.location.search);
+    const verified = urlParams.get('verified');
+    const token = urlParams.get('token');
+
+    if (verified === 'true') {
+      setShowVerificationSuccess(true);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // Auto-verify if token is in URL (for direct links)
+    if (token) {
+      handleAutoVerify(token);
+    }
   }, []);
+
+  const handleAutoVerify = async (token) => {
+    try {
+      await usersAPI.verifyEmail(token);
+      setShowVerificationSuccess(true);
+      setShowVerificationAlert(false);
+      // Refresh profile to get updated verification status
+      await fetchProfile();
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (error) {
+      console.error('Auto-verification failed:', error);
+    }
+  };
+
   const fetchProfile = async () => {
     try {
       const data = await usersAPI.getProfile();
@@ -74,17 +236,24 @@ const Profile = () => {
       setProfile(data);
       setFormData(data);
       setImagePreview(data.profile_image);
+
+      // Update auth context if verification status changed
+      if (updateUser && user?.is_verified !== data.is_verified) {
+        updateUser(data);
+      }
     } catch (error) {
       showSnackbar('Error fetching profile data', 'error');
       console.error('Error fetching profile:', error);
     }
   };
+
   // Helper function to add timestamp to image URL
   const addTimestampToImageUrl = (url) => {
     if (!url) return url;
     const timestamp = new Date().getTime();
     return `${url}${url.includes('?') ? '&' : '?'}_t=${timestamp}`;
   };
+
   const showSnackbar = (message, severity = 'success') => {
     setSnackbar({ open: true, message, severity });
   };
@@ -124,6 +293,23 @@ const Profile = () => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // Handle email verification resend
+  const handleResendVerification = async () => {
+    setVerificationLoading(true);
+    try {
+      const response = await usersAPI.resendVerification();
+      showSnackbar(response.message || 'Verification email sent! Please check your inbox.', 'success');
+    } catch (error) {
+      console.error('Error resending verification:', error);
+      const errorMessage = error.response?.data?.detail ||
+        error.response?.data?.error ||
+        'Failed to send verification email';
+      showSnackbar(errorMessage, 'error');
+    } finally {
+      setVerificationLoading(false);
+    }
   };
 
   const handleImageChange = (e) => {
@@ -242,6 +428,7 @@ const Profile = () => {
     }
 
     setLoading(true);
+    const originalEmail = profile?.email;
 
     try {
       let dataToSend;
@@ -280,7 +467,13 @@ const Profile = () => {
       setImageFile(null);
       setImagePreview(updatedProfile.profile_image);
 
-      showSnackbar('Profile updated successfully!', 'success');
+      // Check if email was changed
+      if (originalEmail !== updatedProfile.email) {
+        setShowVerificationAlert(true);
+        showSnackbar('Profile updated! Please verify your new email address.', 'warning');
+      } else {
+        showSnackbar('Profile updated successfully!', 'success');
+      }
     } catch (error) {
       console.error('Error updating profile:', error);
       if (error.response?.data) {
@@ -380,6 +573,22 @@ const Profile = () => {
       </Tooltip>
 
       <Container maxWidth="lg">
+        {/* Email Verification Success Alert */}
+        {showVerificationSuccess && profile?.is_verified && (
+          <EmailVerificationSuccess
+            onDismiss={() => setShowVerificationSuccess(false)}
+          />
+        )}
+
+        {/* Email Verification Alert */}
+        {showVerificationAlert && !profile?.is_verified && (
+          <EmailVerificationAlert
+            user={profile}
+            onResend={handleResendVerification}
+            onDismiss={() => setShowVerificationAlert(false)}
+          />
+        )}
+
         {/* Profile Header */}
         <ProfileHeader
           profile={profile}

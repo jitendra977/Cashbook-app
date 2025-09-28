@@ -11,6 +11,8 @@ import ProtectedRoute from '../components/common/ProtectedRoute';
 import { AuthProvider } from '../context/AuthContext';
 import Profile from '../pages/auth/Profile';
 import AddUser from '../pages/auth/AddUser';
+import EmailVerification from '../pages/auth/EmailVerification'
+
 const AppRoutes = () => {
   const router = createBrowserRouter([
     {
@@ -57,6 +59,26 @@ const AppRoutes = () => {
         <ProtectedRoute>
           <DashboardLayout>
             <Profile />
+          </DashboardLayout>
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: "/verify-email/:token",
+      element: (
+        <ProtectedRoute>
+          <DashboardLayout>
+            <EmailVerification />
+          </DashboardLayout>
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: "/verify-email",
+      element: (
+        <ProtectedRoute>
+          <DashboardLayout>
+            <EmailVerification />
           </DashboardLayout>
         </ProtectedRoute>
       ),
