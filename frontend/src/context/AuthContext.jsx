@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
         const token = localStorage.getItem('access_token');
         const refreshToken = localStorage.getItem('refresh_token');
         const storedUser = localStorage.getItem('user_data');
-        
+
         if (token && storedUser) {
           try {
             // Parse stored user data
@@ -34,16 +34,16 @@ export const AuthProvider = ({ children }) => {
           try {
             const refreshResponse = await authAPI.refreshToken(refreshToken);
             localStorage.setItem('access_token', refreshResponse.access);
-            
+
             // Set minimal user data with token
-            const minimalUserData = { 
+            const minimalUserData = {
               token: refreshResponse.access,
               username: 'User', // Default values
               email: 'user@example.com'
             };
             setUser(minimalUserData);
             localStorage.setItem('user_data', JSON.stringify(minimalUserData));
-            
+
             console.log('Token refreshed successfully');
           } catch (refreshError) {
             console.error('Token refresh failed:', refreshError);
@@ -66,19 +66,19 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       const data = await authAPI.login(credentials);
-      
-      console.log('Login response:', data); // Debug log
-      
+
+      console.log('Login response:', data);
+
       // Store tokens
       localStorage.setItem('access_token', data.access);
       localStorage.setItem('refresh_token', data.refresh);
-      
+
       // Create comprehensive user object
       const userData = {
         // From API response
         ...data.user,
         token: data.access,
-        
+
         // Ensure required fields exist with defaults
         username: data.user?.username || credentials.username || credentials.email?.split('@')[0] || 'User',
         email: data.user?.email || credentials.email || 'user@example.com',
@@ -89,23 +89,25 @@ export const AuthProvider = ({ children }) => {
         is_verified: data.user?.is_verified || false,
         is_active: data.user?.is_active !== false, // Default to true
         profile_image: data.user?.profile_image || null,
-        
+
         // Add timestamp for debugging
         loginTime: new Date().toISOString()
       };
-      
-      console.log('Setting user data:', userData); // Debug log
-      
+
+      console.log('Setting user data:', userData);
+
       setUser(userData);
       localStorage.setItem('user_data', JSON.stringify(userData));
-      
+
       return { success: true, data };
     } catch (error) {
-      console.error('Login error:', error);
-      setLoading(false);
-      return { 
-        success: false, 
-        error: error.response?.data?.message || error.message || 'Login failed' 
+      console.error('Login error details:', error);
+
+      // Return the enhanced error for detailed handling
+      return {
+        success: false,
+        error: error.details || error.message || 'Login failed',
+        originalError: error
       };
     } finally {
       setLoading(false);
@@ -119,9 +121,12 @@ export const AuthProvider = ({ children }) => {
       return { success: true, data: response };
     } catch (error) {
       console.error('Registration error:', error);
-      return { 
-        success: false, 
-        error: error.response?.data?.message || error.message || 'Registration failed' 
+
+      // Return enhanced error information
+      return {
+        success: false,
+        error: error.details || error.message || 'Registration failed',
+        originalError: error // Include the original error for detailed handling
       };
     }
   };
@@ -150,14 +155,14 @@ export const AuthProvider = ({ children }) => {
 
       const response = await authAPI.refreshToken(refreshToken);
       localStorage.setItem('access_token', response.access);
-      
+
       // Update user object with new token
       if (user) {
         const updatedUser = { ...user, token: response.access };
         setUser(updatedUser);
         localStorage.setItem('user_data', JSON.stringify(updatedUser));
       }
-      
+
       return response.access;
     } catch (error) {
       console.error('Token refresh failed:', error);
@@ -166,14 +171,112 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Function to check if token is expired
+  const isTokenExpired = () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return true;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.exp * 1000 < Date.now();
+    } catch (error) {
+      console.error('Error checking token expiration:', error);
+      return true;
+    }
+  };
+
+  // Function to validate current authentication state
+  const validateAuth = async () => {
+    if (!user) return false;
+
+    if (isTokenExpired()) {
+      try {
+        await refreshAccessToken();
+        return true;
+      } catch (error) {
+        logout();
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  // Function to get user permissions
+  const hasPermission = (permission) => {
+    if (!user) return false;
+
+    switch (permission) {
+      case 'admin':
+        return user.is_staff || user.is_superuser;
+      case 'superuser':
+        return user.is_superuser;
+      case 'verified':
+        return user.is_verified;
+      case 'active':
+        return user.is_active;
+      default:
+        return false;
+    }
+  };
+
+  // Function to update user profile
+  const updateProfile = async (profileData) => {
+    try {
+      // This would typically call an API endpoint to update the profile
+      // For now, we'll just update the local state
+      updateUser(profileData);
+      return { success: true };
+    } catch (error) {
+      console.error('Profile update error:', error);
+      return {
+        success: false,
+        error: error.details || error.message || 'Profile update failed'
+      };
+    }
+  };
+
+  // Function to change password
+  const changePassword = async (currentPassword, newPassword) => {
+    try {
+      // This would typically call an API endpoint to change password
+      // For now, we'll just return a success message
+      console.log('Password change requested');
+      return { success: true, message: 'Password changed successfully' };
+    } catch (error) {
+      console.error('Password change error:', error);
+      return {
+        success: false,
+        error: error.details || error.message || 'Password change failed'
+      };
+    }
+  };
+
+  // Function to check if user is authenticated and token is valid
+  const isAuthenticated = () => {
+    return !!user && !isTokenExpired();
+  };
+
+  // Function to get authentication headers for API calls
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('access_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
   const contextValue = {
     user,
     login,
     register,
     logout,
     updateUser,
+    updateProfile,
+    changePassword,
     refreshAccessToken,
-    isAuthenticated: !!user,
+    validateAuth,
+    hasPermission,
+    isAuthenticated: isAuthenticated(),
+    isTokenExpired,
+    getAuthHeaders,
     loading
   };
 

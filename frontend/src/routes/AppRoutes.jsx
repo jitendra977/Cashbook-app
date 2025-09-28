@@ -9,7 +9,7 @@ import { DashboardLayout } from '../components/layout/DashboardLayout';
 import UserManage from '../pages/auth/userManage';
 import ProtectedRoute from '../components/common/ProtectedRoute';
 import { AuthProvider } from '../context/AuthContext';
-
+import Profile from '../pages/auth/Profile';
 const AppRoutes = () => {
   const router = createBrowserRouter([
     {
@@ -36,6 +36,16 @@ const AppRoutes = () => {
         <ProtectedRoute>
           <DashboardLayout>
             <UserManage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: "/profile",
+      element: (
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Profile />
           </DashboardLayout>
         </ProtectedRoute>
       ),

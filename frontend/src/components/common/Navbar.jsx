@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -27,7 +28,7 @@ const Navbar = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const { logout } = useAuth();
-
+  const navigate = useNavigate();
   useEffect(() => {
     fetchUserProfile();
   }, []);
@@ -65,11 +66,12 @@ const Navbar = () => {
     setAnchorEl(null);
   };
 
-  const handleProfile = () => {
-    handleMenuClose();
-    console.log('Profile clicked');
-  };
+  
 
+const handleProfile = () => {
+  handleMenuClose(); // close dropdown menu if any
+  navigate('/profile'); // navigate to profile page
+};
   const handleSettings = () => {
     handleMenuClose();
     console.log('Settings clicked');

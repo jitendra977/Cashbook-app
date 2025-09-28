@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { usersAPI } from '../../api/users';
 import UserTable from '../../components/tables/UserTable';
 import UserForm from '../../components/forms/UserForm';
+import { useAuth } from '../../context/AuthContext';
 
 const UserManage = () => {
+  const { user: currentUser } = useAuth(); // get logged-in user
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -78,12 +80,16 @@ const UserManage = () => {
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4">User Management</h2>
-      <button 
-        className="px-3 py-1 bg-blue-500 text-white rounded mb-4"
-        onClick={handleAdd}
-      >
-        ➕ Add User
-      </button>
+
+      {/* Show Add User only if staff or superuser */}
+      {(currentUser?.is_staff || currentUser?.is_superuser) && (
+        <button 
+          className="px-3 py-1 bg-blue-500 text-white rounded mb-4"
+          onClick={handleAdd}
+        >
+          ➕ Add User
+        </button>
+      )}
 
       <UserTable
         users={users}
@@ -91,6 +97,7 @@ const UserManage = () => {
         error={error}
         onDelete={handleDelete}
         onEdit={handleEdit}
+        currentUser={currentUser} // Pass currentUser for permission checks
       />
 
       <UserForm

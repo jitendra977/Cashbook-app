@@ -3,30 +3,67 @@ import api from './index.js';
 
 export const authAPI = {
   login: async (credentials) => {
-    // ✅ Corrected endpoint
-    const response = await api.post('/login/', credentials);
-    return response.data;
+    try {
+      const response = await api.post('/login/', credentials, {
+        timeout: 10000, // 10 second timeout
+        timeoutErrorMessage: 'Connection timeout. Please try again.'
+      });
+      return response.data;
+    } catch (error) {
+      // Enhance error object with more details
+      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        error.code = 'NETWORK_ERROR';
+      }
+      if (!error.response) {
+        error.response = { status: 0 }; // No response means connection failed
+      }
+      throw error;
+    }
   },
 
   register: async (userData) => {
-    // ✅ Send as FormData if needed
     const isFormData = userData instanceof FormData;
 
-    const config = {};
+    const config = {
+      timeout: 10000,
+      timeoutErrorMessage: 'Connection timeout. Please try again.'
+    };
+    
     if (isFormData) {
       config.headers = {
         'Content-Type': 'multipart/form-data',
       };
     }
 
-    // ✅ Corrected registration endpoint
-    const response = await api.post('/users/register/', userData, config);
-    return response.data;
+    try {
+      const response = await api.post('/users/register/', userData, config);
+      return response.data;
+    } catch (error) {
+      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        error.code = 'NETWORK_ERROR';
+      }
+      if (!error.response) {
+        error.response = { status: 0 };
+      }
+      throw error;
+    }
   },
 
   refreshToken: async (refreshToken) => {
-    const response = await api.post('/token/refresh/', { refresh: refreshToken });
-    return response.data;
+    try {
+      const response = await api.post('/token/refresh/', { refresh: refreshToken }, {
+        timeout: 10000
+      });
+      return response.data;
+    } catch (error) {
+      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        error.code = 'NETWORK_ERROR';
+      }
+      if (!error.response) {
+        error.response = { status: 0 };
+      }
+      throw error;
+    }
   },
 
   logout: () => {

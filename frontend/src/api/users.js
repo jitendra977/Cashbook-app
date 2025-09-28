@@ -2,38 +2,226 @@
 import api from './index.js';
 
 export const usersAPI = {
+  // Profile management
   getProfile: async () => {
-    const response = await api.get('/users/profile/');
-    return response.data;
+    try {
+      const response = await api.get('/users/profile/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      throw error;
+    }
   },
   
   updateProfile: async (userData) => {
-    const response = await api.patch('/users/profile/', userData);
-    return response.data;
+    try {
+      // Handle both FormData (for image uploads) and regular objects
+      const config = {};
+      
+      if (userData instanceof FormData) {
+        config.headers = {
+          'Content-Type': 'multipart/form-data',
+        };
+      }
+
+      const response = await api.patch('/users/profile/', userData, config);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
   },
-  
-  getAllUsers: async () => {
-    const response = await api.get('/users/');
-    return response.data;
+
+  // Password management
+  updatePassword: async (passwordData) => {
+    try {
+      const response = await api.patch('/users/change-password/', passwordData);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating password:', error);
+      throw error;
+    }
+  },
+
+  // Email verification
+  requestEmailVerification: async () => {
+    try {
+      const response = await api.post('/users/verify-email/');
+      return response.data;
+    } catch (error) {
+      console.error('Error requesting email verification:', error);
+      throw error;
+    }
+  },
+
+  verifyEmail: async (token) => {
+    try {
+      const response = await api.post('/users/verify-email/confirm/', { token });
+      return response.data;
+    } catch (error) {
+      console.error('Error verifying email:', error);
+      throw error;
+    }
+  },
+
+  // Profile image management
+  uploadProfileImage: async (imageFile) => {
+    try {
+      const formData = new FormData();
+      formData.append('profile_image', imageFile);
+
+      const response = await api.patch('/users/profile/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          console.log('Upload progress:', percentCompleted);
+        }
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error uploading profile image:', error);
+      throw error;
+    }
+  },
+
+  deleteProfileImage: async () => {
+    try {
+      const response = await api.patch('/users/profile/', { 
+        profile_image: null 
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting profile image:', error);
+      throw error;
+    }
+  },
+
+  // User management (for admin users)
+  getAllUsers: async (params = {}) => {
+    try {
+      const queryString = new URLSearchParams(params).toString();
+      const url = queryString ? `/users/?${queryString}` : '/users/';
+      const response = await api.get(url);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      throw error;
+    }
   },
   
   getUser: async (id) => {
-    const response = await api.get(`/users/${id}/`);
-    return response.data;
+    try {
+      const response = await api.get(`/users/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      throw error;
+    }
   },
   
   createUser: async (userData) => {
-    const response = await api.post('/users/', userData);
-    return response.data;
+    try {
+      const config = {};
+      
+      if (userData instanceof FormData) {
+        config.headers = {
+          'Content-Type': 'multipart/form-data',
+        };
+      }
+
+      const response = await api.post('/users/', userData, config);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw error;
+    }
   },
   
   updateUser: async (id, userData) => {
-    const response = await api.patch(`/users/${id}/`, userData);
-    return response.data;
+    try {
+      const config = {};
+      
+      if (userData instanceof FormData) {
+        config.headers = {
+          'Content-Type': 'multipart/form-data',
+        };
+      }
+
+      const response = await api.patch(`/users/${id}/`, userData, config);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating user:', error);
+      throw error;
+    }
   },
   
   deleteUser: async (id) => {
-    const response = await api.delete(`/users/${id}/`);
-    return response.data;
+    try {
+      const response = await api.delete(`/users/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      throw error;
+    }
+  },
+
+  // Account settings
+  updateAccountSettings: async (settings) => {
+    try {
+      const response = await api.patch('/users/settings/', settings);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating account settings:', error);
+      throw error;
+    }
+  },
+
+  getAccountSettings: async () => {
+    try {
+      const response = await api.get('/users/settings/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching account settings:', error);
+      throw error;
+    }
+  },
+
+  // Account deactivation
+  deactivateAccount: async (password) => {
+    try {
+      const response = await api.post('/users/deactivate/', { password });
+      return response.data;
+    } catch (error) {
+      console.error('Error deactivating account:', error);
+      throw error;
+    }
+  },
+
+  // Export user data (GDPR compliance)
+  exportUserData: async () => {
+    try {
+      const response = await api.get('/users/export/', {
+        responseType: 'blob'
+      });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'user-data.json');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error exporting user data:', error);
+      throw error;
+    }
   }
 };
