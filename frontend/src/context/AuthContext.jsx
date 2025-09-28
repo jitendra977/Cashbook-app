@@ -138,12 +138,21 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  const updateUser = (newUserData) => {
-    const updatedUser = { ...user, ...newUserData };
-    console.log('Updating user data:', updatedUser);
-    setUser(updatedUser);
-    localStorage.setItem('user_data', JSON.stringify(updatedUser));
-  };
+
+const updateUser = (newUserData) => {
+  const updatedUser = { ...user, ...newUserData };
+  console.log('Updating user data:', updatedUser);
+  
+  // Ensure profile_image includes timestamp to prevent caching issues
+  if (newUserData.profile_image) {
+    // Add timestamp to force image refresh
+    const timestamp = new Date().getTime();
+    updatedUser.profile_image = `${newUserData.profile_image}${newUserData.profile_image.includes('?') ? '&' : '?'}_t=${timestamp}`;
+  }
+  
+  setUser(updatedUser);
+  localStorage.setItem('user_data', JSON.stringify(updatedUser));
+};
 
   // Function to refresh access token
   const refreshAccessToken = async () => {

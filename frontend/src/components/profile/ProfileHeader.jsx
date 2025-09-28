@@ -1,268 +1,373 @@
 // src/components/profile/ProfileHeader.jsx
-import React, { useRef } from 'react';
+import React from 'react';
 import {
   Box,
   Paper,
+  Avatar,
   Typography,
   Button,
-  Stack,
-  Avatar,
-  Badge,
-  Fab,
+  IconButton,
   Chip,
-  LinearProgress,
+  Stack,
   Tooltip,
-  alpha,
-  useTheme
+  useTheme,
+  alpha
 } from '@mui/material';
-import { 
-  Edit, 
-  Cancel, 
-  PhotoCamera, 
+import {
+  Edit,
+  Close,
+  Lock,
   Delete,
-  Security
+  CameraAlt,
+  Person,
+  Verified,
+  Star,
+  CloudUpload
 } from '@mui/icons-material';
 
-const ProfileHeader = ({ 
+export const ProfileHeader = ({ 
   profile, 
   editing, 
   onEditToggle, 
   onPasswordChange, 
-  onImageSelect,
+  onImageSelect, 
   onImageDelete,
-  imagePreview 
+  imagePreview,
+  imageLoading = false
 }) => {
   const theme = useTheme();
-  const fileInputRef = useRef(null);
 
-  const getInitials = (firstName, lastName, username) => {
-    if (firstName && lastName) {
-      return `${firstName.charAt(0).toUpperCase()}${lastName.charAt(0).toUpperCase()}`;
+  const getRoleBadge = () => {
+    if (profile?.is_superuser) {
+      return { label: 'Super Admin', color: 'error', icon: <Star /> };
     }
-    if (username) {
-      return username.charAt(0).toUpperCase();
+    if (profile?.is_staff) {
+      return { label: 'Staff', color: 'primary', icon: <Verified /> };
     }
-    return 'U';
+    return { label: 'User', color: 'default', icon: <Person /> };
   };
 
-  const getCompletionPercentage = () => {
-    if (!profile) return 0;
-    const fields = ['username', 'email', 'first_name', 'last_name', 'phone_number', 'profile_image'];
-    const completedFields = fields.filter(field => profile[field]);
-    return Math.round((completedFields.length / fields.length) * 100);
+  const getStatusBadge = () => {
+    if (profile?.is_active) {
+      return { label: 'Active', color: 'success', variant: 'filled' };
+    }
+    return { label: 'Inactive', color: 'error', variant: 'filled' };
   };
+
+  const roleBadge = getRoleBadge();
+  const statusBadge = getStatusBadge();
 
   return (
     <Paper 
       elevation={0}
       sx={{ 
-        background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-        color: 'white',
+        p: 4, 
+        mb: 3, 
         borderRadius: 4,
-        p: 4,
-        mb: 3,
+        background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
+        border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 4,
+          background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`
+        }
       }}
     >
-      {/* Background decorations */}
-      <Box
-        sx={{
-          position: 'absolute',
-          top: -100,
-          right: -100,
-          width: 200,
-          height: 200,
-          borderRadius: '50%',
-          background: alpha('#fff', 0.1),
-          zIndex: 0
-        }}
-      />
+      <Box 
+        display="flex" 
+        alignItems="center" 
+        flexDirection={{ xs: 'column', md: 'row' }} 
+        gap={4}
+      >
+        {/* Profile Image Section */}
+        <Box position="relative" sx={{ flexShrink: 0 }}>
+          <Avatar
+            src={imagePreview || profile?.profile_image}
+            sx={{
+              width: 140,
+              height: 140,
+              border: `4px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+              backgroundColor: alpha(theme.palette.primary.main, 0.1),
+              fontSize: '3rem',
+              '& img': {
+                objectFit: 'cover'
+              },
+              boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                borderColor: alpha(theme.palette.primary.main, 0.4),
+                transform: editing ? 'scale(1.05)' : 'none'
+              }
+            }}
+          >
+            {!imagePreview && !profile?.profile_image && (
+              <Person sx={{ fontSize: 60, color: theme.palette.primary.main }} />
+            )}
+          </Avatar>
+          
+          {/* Edit Image Button */}
+          {editing && (
+            <>
+              <Tooltip title="Change profile picture">
+                <IconButton
+                  component="label"
+                  sx={{
+                    position: 'absolute',
+                    bottom: 8,
+                    right: 8,
+                    bgcolor: theme.palette.primary.main,
+                    color: 'white',
+                    '&:hover': { 
+                      bgcolor: theme.palette.primary.dark,
+                      transform: 'scale(1.1)'
+                    },
+                    transition: 'all 0.2s ease',
+                    boxShadow: 3,
+                    width: 48,
+                    height: 48
+                  }}
+                  disabled={imageLoading}
+                >
+                  {imageLoading ? (
+                    <CloudUpload />
+                  ) : (
+                    <CameraAlt />
+                  )}
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    onChange={onImageSelect}
+                    disabled={imageLoading}
+                  />
+                </IconButton>
+              </Tooltip>
+              
+              {/* Remove Image Button */}
+              {(imagePreview || profile?.profile_image) && (
+                <Tooltip title="Remove profile picture">
+                  <IconButton
+                    onClick={onImageDelete}
+                    sx={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      bgcolor: theme.palette.error.main,
+                      color: 'white',
+                      '&:hover': { 
+                        bgcolor: theme.palette.error.dark,
+                        transform: 'scale(1.1)'
+                      },
+                      transition: 'all 0.2s ease',
+                      boxShadow: 3,
+                      width: 40,
+                      height: 40
+                    }}
+                    disabled={imageLoading}
+                  >
+                    <Delete fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </>
+          )}
+        </Box>
 
-      <Box position="relative" zIndex={1}>
-        {/* Top section with title and actions */}
-        <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={4}>
-          <Box>
-            <Typography variant="h3" component="h1" fontWeight="bold" gutterBottom>
-              Profile Settings
-            </Typography>
-            <Typography variant="h6" sx={{ opacity: 0.9, mb: 2 }}>
-              Manage your account information and preferences
+        {/* Profile Information Section */}
+        <Box flex={1} sx={{ minWidth: 0 }}>
+          {/* Name and Username */}
+          <Box sx={{ mb: 2 }}>
+            <Typography 
+              variant="h3" 
+              fontWeight="bold" 
+              gutterBottom
+              sx={{ 
+                color: theme.palette.text.primary,
+                fontSize: { xs: '2rem', md: '2.5rem' },
+                lineHeight: 1.2
+              }}
+            >
+              {profile?.first_name && profile?.last_name 
+                ? `${profile.first_name} ${profile.last_name}`
+                : profile?.username
+              }
             </Typography>
             
-            {/* Profile completion */}
-            <Box display="flex" alignItems="center" gap={2}>
-              <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                Profile Completion: {getCompletionPercentage()}%
-              </Typography>
-              <LinearProgress 
-                variant="determinate" 
-                value={getCompletionPercentage()} 
-                sx={{ 
-                  flex: 1, 
-                  maxWidth: 200,
-                  bgcolor: alpha('#fff', 0.2),
-                  '& .MuiLinearProgress-bar': {
-                    bgcolor: '#fff'
-                  }
-                }} 
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                color: theme.palette.text.secondary,
+                mb: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}
+            >
+              @{profile?.username}
+            </Typography>
+            
+            {/* Role and Status Chips */}
+            <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+              <Chip
+                icon={roleBadge.icon}
+                label={roleBadge.label}
+                color={roleBadge.color}
+                variant="outlined"
+                size="small"
               />
-            </Box>
+              <Chip
+                label={statusBadge.label}
+                color={statusBadge.color}
+                variant={statusBadge.variant}
+                size="small"
+              />
+            </Stack>
           </Box>
 
-          <Stack direction="row" spacing={2}>
+          {/* Contact Information */}
+          <Box sx={{ mb: 3 }}>
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                color: theme.palette.text.secondary,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                mb: 0.5
+              }}
+            >
+              {profile?.email}
+            </Typography>
+            
+            {profile?.phone_number && (
+              <Typography 
+                variant="body1" 
+                sx={{ 
+                  color: theme.palette.text.secondary,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}
+              >
+                {profile.phone_number}
+              </Typography>
+            )}
+          </Box>
+
+          {/* Action Buttons */}
+          <Stack 
+            direction={{ xs: 'column', sm: 'row' }} 
+            spacing={2} 
+            sx={{ flexWrap: 'wrap' }}
+          >
+            <Button
+              variant={editing ? "outlined" : "contained"}
+              onClick={onEditToggle}
+              startIcon={editing ? <Close /> : <Edit />}
+              size="large"
+              sx={{
+                borderRadius: 3,
+                px: 4,
+                fontWeight: 600,
+                minWidth: 160
+              }}
+            >
+              {editing ? 'Cancel Edit' : 'Edit Profile'}
+            </Button>
+            
             <Button
               variant="outlined"
-              startIcon={<Security />}
               onClick={onPasswordChange}
+              startIcon={<Lock />}
+              size="large"
               sx={{
-                borderColor: 'rgba(255,255,255,0.5)',
-                color: 'white',
+                borderRadius: 3,
+                px: 4,
+                fontWeight: 600,
+                minWidth: 160,
+                borderWidth: 2,
                 '&:hover': {
-                  borderColor: 'rgba(255,255,255,0.8)',
-                  bgcolor: 'rgba(255,255,255,0.1)'
+                  borderWidth: 2
                 }
               }}
             >
               Change Password
             </Button>
-            
-            <Button
-              variant={editing ? "outlined" : "contained"}
-              startIcon={editing ? <Cancel /> : <Edit />}
-              onClick={onEditToggle}
-              sx={{
-                bgcolor: editing ? 'transparent' : 'rgba(255,255,255,0.2)',
-                borderColor: editing ? 'rgba(255,255,255,0.5)' : 'transparent',
-                color: 'white',
-                '&:hover': {
-                  bgcolor: editing ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.3)',
-                },
-                minWidth: 120
-              }}
-              size="large"
-            >
-              {editing ? 'Cancel' : 'Edit Profile'}
-            </Button>
           </Stack>
-        </Box>
-
-        {/* Profile image and user info */}
-        <Box display="flex" alignItems="center" gap={4}>
-          {/* Profile Image */}
-          <Box position="relative">
-            <Badge
-              overlap="circular"
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-              badgeContent={
-                editing && (
-                  <Tooltip title="Change Profile Picture">
-                    <Fab
-                      size="small"
-                      color="secondary"
-                      onClick={() => fileInputRef.current?.click()}
-                      sx={{
-                        boxShadow: 4,
-                        '&:hover': { transform: 'scale(1.1)' },
-                        transition: 'transform 0.2s'
-                      }}
-                    >
-                      <PhotoCamera />
-                    </Fab>
-                  </Tooltip>
-                )
-              }
-            >
-              <Avatar
-                src={imagePreview || profile.profile_image}
-                sx={{ 
-                  width: 120, 
-                  height: 120,
-                  fontSize: '2.5rem',
-                  border: '4px solid rgba(255,255,255,0.3)',
-                  boxShadow: 4,
-                  bgcolor: alpha('#fff', 0.2)
-                }}
-              >
-                {!(imagePreview || profile.profile_image) && 
-                  getInitials(profile.first_name, profile.last_name, profile.username)
-                }
-              </Avatar>
-            </Badge>
-            
-            {editing && (imagePreview || profile.profile_image) && (
-              <Tooltip title="Remove Picture">
-                <Fab
-                  size="small"
-                  color="error"
-                  onClick={onImageDelete}
-                  sx={{
-                    position: 'absolute',
-                    top: -5,
-                    right: -5,
-                    boxShadow: 4,
-                    '&:hover': { transform: 'scale(1.1)' },
-                    transition: 'transform 0.2s'
-                  }}
-                >
-                  <Delete />
-                </Fab>
-              </Tooltip>
-            )}
-          </Box>
-
-          {/* User Info */}
-          <Box>
-            <Typography variant="h4" fontWeight="bold" gutterBottom>
-              {profile.first_name && profile.last_name 
-                ? `${profile.first_name} ${profile.last_name}`
-                : profile.username
-              }
-            </Typography>
-            <Typography variant="h6" sx={{ opacity: 0.9, mb: 1 }}>
-              @{profile.username}
-            </Typography>
-            <Typography variant="body1" sx={{ opacity: 0.8 }}>
-              {profile.email}
-            </Typography>
-            
-            {/* Status badges */}
-            <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-              <Chip 
-                label={profile.is_active ? 'Active' : 'Inactive'}
-                color={profile.is_active ? 'success' : 'error'}
-                size="small"
-                sx={{ color: 'white' }}
-              />
-              {profile.is_staff && (
-                <Chip 
-                  label="Staff" 
-                  color="info" 
-                  size="small"
-                  sx={{ color: 'white' }}
-                />
-              )}
-              {profile.is_verified && (
-                <Chip 
-                  label="Verified" 
-                  color="success" 
-                  size="small"
-                  sx={{ color: 'white' }}
-                />
-              )}
-            </Stack>
-          </Box>
         </Box>
       </Box>
 
-      {/* Hidden file input */}
-      <input
-        type="file"
-        accept="image/*"
-        ref={fileInputRef}
-        onChange={onImageSelect}
-        style={{ display: 'none' }}
-      />
+      {/* Additional Info Bar */}
+      <Box 
+        sx={{ 
+          mt: 3,
+          pt: 3,
+          borderTop: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 2
+        }}
+      >
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            color: theme.palette.text.secondary,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}
+        >
+          Member since: {profile?.date_joined ? new Date(profile.date_joined).toLocaleDateString() : 'N/A'}
+        </Typography>
+        
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            color: theme.palette.text.secondary,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}
+        >
+          Last login: {profile?.last_login ? new Date(profile.last_login).toLocaleDateString() : 'N/A'}
+        </Typography>
+      </Box>
+
+      {/* Loading Overlay */}
+      {imageLoading && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: alpha(theme.palette.background.paper, 0.8),
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 4,
+            zIndex: 1
+          }}
+        >
+          <Box textAlign="center">
+            <Typography variant="h6" color="primary" gutterBottom>
+              Uploading Image...
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Please wait while we update your profile picture
+            </Typography>
+          </Box>
+        </Box>
+      )}
     </Paper>
   );
 };

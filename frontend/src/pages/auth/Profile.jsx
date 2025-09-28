@@ -23,7 +23,7 @@ import {
   alpha,
   Slide
 } from '@mui/material';
-import { 
+import {
   Delete,
   ArrowBack,
   CloudUpload
@@ -31,11 +31,11 @@ import {
 import { usersAPI } from '../../api/users';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { 
-  ProfileHeader, 
-  ChangePasswordDialog, 
-  ProfileForm, 
-  ProfileView 
+import {
+  ProfileHeader,
+  ChangePasswordDialog,
+  ProfileForm,
+  ProfileView
 } from '../../components/profile';
 const Transition = React.forwardRef(function Transition(props, ref) {
   return <Slide direction="up" ref={ref} {...props} />;
@@ -62,21 +62,29 @@ const Profile = () => {
   useEffect(() => {
     fetchProfile();
   }, []);
-
   const fetchProfile = async () => {
     try {
       const data = await usersAPI.getProfile();
+
+      // Add timestamp to profile image to prevent caching
+      if (data.profile_image) {
+        data.profile_image = addTimestampToImageUrl(data.profile_image);
+      }
+
       setProfile(data);
       setFormData(data);
-      if (data.profile_image) {
-        setImagePreview(data.profile_image);
-      }
+      setImagePreview(data.profile_image);
     } catch (error) {
       showSnackbar('Error fetching profile data', 'error');
       console.error('Error fetching profile:', error);
     }
   };
-
+  // Helper function to add timestamp to image URL
+  const addTimestampToImageUrl = (url) => {
+    if (!url) return url;
+    const timestamp = new Date().getTime();
+    return `${url}${url.includes('?') ? '&' : '?'}_t=${timestamp}`;
+  };
   const showSnackbar = (message, severity = 'success') => {
     setSnackbar({ open: true, message, severity });
   };
@@ -99,17 +107,17 @@ const Profile = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!formData.username?.trim()) {
       newErrors.username = 'Username is required';
     }
-    
+
     if (!formData.email?.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
-    
+
     if (formData.phone_number && !/^\+?[\d\s\-\(\)]+$/.test(formData.phone_number)) {
       newErrors.phone_number = 'Please enter a valid phone number';
     }
@@ -126,7 +134,7 @@ const Profile = () => {
         showSnackbar('Please select a valid image file', 'error');
         return;
       }
-      
+
       // Validate file size (5MB limit)
       if (file.size > 5 * 1024 * 1024) {
         showSnackbar('Image size must be less than 5MB', 'error');
@@ -134,14 +142,14 @@ const Profile = () => {
       }
 
       setImageFile(file);
-      
+
       // Create preview
       const reader = new FileReader();
       reader.onload = (e) => {
         setImagePreview(e.target.result);
       };
       reader.readAsDataURL(file);
-      
+
       clearError('profile_image');
     }
   };
@@ -162,25 +170,31 @@ const Profile = () => {
 
   const handleImageUpload = async () => {
     if (!imageFile) return;
-    
+
     setImageLoading(true);
     const progressInterval = simulateProgress();
-    
-    const uploadFormData = new FormData();
-    uploadFormData.append('profile_image', imageFile);
 
     try {
+      const uploadFormData = new FormData();
+      uploadFormData.append('profile_image', imageFile);
+
       const updatedProfile = await usersAPI.updateProfile(uploadFormData);
+
+      // Add timestamp to the new image URL
+      if (updatedProfile.profile_image) {
+        updatedProfile.profile_image = addTimestampToImageUrl(updatedProfile.profile_image);
+      }
+
       setProfile(updatedProfile);
       setFormData(updatedProfile);
       setImageFile(null);
       setImagePreview(updatedProfile.profile_image);
-      
-      // Update auth context
+
+      // Update auth context with timestamped URL
       if (updateUser) {
         updateUser(updatedProfile);
       }
-      
+
       showSnackbar('Profile image updated successfully!', 'success');
     } catch (error) {
       console.error('Error uploading image:', error);
@@ -199,17 +213,18 @@ const Profile = () => {
     setImageLoading(true);
     try {
       const updatedProfile = await usersAPI.updateProfile({ profile_image: null });
+
       setProfile(updatedProfile);
       setFormData(updatedProfile);
       setImagePreview(null);
       setImageFile(null);
       setDeleteDialogOpen(false);
-      
+
       // Update auth context
       if (updateUser) {
         updateUser(updatedProfile);
       }
-      
+
       showSnackbar('Profile image removed successfully!', 'success');
     } catch (error) {
       console.error('Error deleting image:', error);
@@ -221,7 +236,7 @@ const Profile = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -229,22 +244,52 @@ const Profile = () => {
     setLoading(true);
 
     try {
-      const updatedProfile = await usersAPI.updateProfile(formData);
+      let dataToSend;
+
+      if (imageFile) {
+        dataToSend = new FormData();
+        Object.keys(formData).forEach(key => {
+          if (key !== 'profile_image' && formData[key] !== null && formData[key] !== undefined) {
+            dataToSend.append(key, formData[key]);
+          }
+        });
+        dataToSend.append('profile_image', imageFile);
+      } else {
+        dataToSend = { ...formData };
+        if (dataToSend.profile_image === profile?.profile_image) {
+          delete dataToSend.profile_image;
+        }
+      }
+
+      const updatedProfile = await usersAPI.updateProfile(dataToSend);
+
+      // Add timestamp to image URL if it exists
+      if (updatedProfile.profile_image) {
+        updatedProfile.profile_image = addTimestampToImageUrl(updatedProfile.profile_image);
+      }
+
       setProfile(updatedProfile);
       setEditing(false);
-      
+
       // Update auth context
       if (updateUser) {
         updateUser(updatedProfile);
       }
-      
+
+      // Reset image states
+      setImageFile(null);
+      setImagePreview(updatedProfile.profile_image);
+
       showSnackbar('Profile updated successfully!', 'success');
     } catch (error) {
       console.error('Error updating profile:', error);
       if (error.response?.data) {
         setErrors(error.response.data);
+        const firstError = Object.values(error.response.data)[0];
+        showSnackbar(Array.isArray(firstError) ? firstError[0] : firstError, 'error');
+      } else {
+        showSnackbar('Failed to update profile', 'error');
       }
-      showSnackbar('Failed to update profile', 'error');
     } finally {
       setLoading(false);
     }
@@ -287,10 +332,10 @@ const Profile = () => {
 
   if (!profile) {
     return (
-      <Box 
-        display="flex" 
-        justifyContent="center" 
-        alignItems="center" 
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
         minHeight="100vh"
         sx={{
           background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.secondary.main, 0.1)} 100%)`
@@ -354,13 +399,13 @@ const Profile = () => {
                 <Typography variant="h6" fontWeight="bold">
                   Upload New Profile Image
                 </Typography>
-                <Chip 
+                <Chip
                   label={`${(imageFile.size / 1024 / 1024).toFixed(2)} MB`}
                   variant="outlined"
                   size="small"
                 />
               </Box>
-              
+
               {imageLoading && (
                 <Box sx={{ mb: 2 }}>
                   <LinearProgress variant="determinate" value={uploadProgress} />
@@ -369,7 +414,7 @@ const Profile = () => {
                   </Typography>
                 </Box>
               )}
-              
+
               <Stack direction="row" spacing={2}>
                 <Button
                   variant="contained"
@@ -398,9 +443,9 @@ const Profile = () => {
         )}
 
         {/* Main Content */}
-        <Paper 
+        <Paper
           elevation={0}
-          sx={{ 
+          sx={{
             borderRadius: 4,
             overflow: 'hidden',
             boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
@@ -422,8 +467,8 @@ const Profile = () => {
       </Container>
 
       {/* Delete Image Confirmation Dialog */}
-      <Dialog 
-        open={deleteDialogOpen} 
+      <Dialog
+        open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
         TransitionComponent={Transition}
         PaperProps={{
@@ -445,16 +490,16 @@ const Profile = () => {
           </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 1 }}>
-          <Button 
+          <Button
             onClick={() => setDeleteDialogOpen(false)}
             sx={{ borderRadius: 2 }}
             size="large"
           >
             Cancel
           </Button>
-          <Button 
-            onClick={handleImageDelete} 
-            color="error" 
+          <Button
+            onClick={handleImageDelete}
+            color="error"
             variant="contained"
             disabled={imageLoading}
             startIcon={imageLoading ? <CircularProgress size={20} /> : <Delete />}
@@ -483,8 +528,8 @@ const Profile = () => {
         onClose={handleSnackbarClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={handleSnackbarClose} 
+        <Alert
+          onClose={handleSnackbarClose}
           severity={snackbar.severity}
           variant="filled"
           sx={{ borderRadius: 2 }}

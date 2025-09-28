@@ -13,25 +13,31 @@ export const usersAPI = {
     }
   },
 
-  updateProfile: async (userData) => {
-    try {
-      // Handle both FormData (for image uploads) and regular objects
-      const config = {};
+updateProfile: async (userData) => {
+  try {
+    const config = {};
 
-      if (userData instanceof FormData) {
-        config.headers = {
-          'Content-Type': 'multipart/form-data',
-        };
-      }
-
-      const response = await api.patch('/users/profile/', userData, config);
-      return response.data;
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      throw error;
+    if (userData instanceof FormData) {
+      // For FormData (file uploads), let browser set Content-Type with boundary
+      config.headers = {
+        'Content-Type': 'multipart/form-data',
+      };
+    } else {
+      // For JSON data, set Content-Type explicitly
+      config.headers = {
+        'Content-Type': 'application/json',
+      };
+      // Convert object to JSON string
+      userData = JSON.stringify(userData);
     }
-  },
 
+    const response = await api.put('/users/profile/', userData, config);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    throw error;
+  }
+},
   // Password management
   updatePassword: async (passwordData) => {
     try {

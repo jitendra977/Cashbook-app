@@ -10,6 +10,7 @@ import UserManage from '../pages/auth/userManage';
 import ProtectedRoute from '../components/common/ProtectedRoute';
 import { AuthProvider } from '../context/AuthContext';
 import Profile from '../pages/auth/Profile';
+import AddUser from '../pages/auth/AddUser';
 const AppRoutes = () => {
   const router = createBrowserRouter([
     {
@@ -36,6 +37,16 @@ const AppRoutes = () => {
         <ProtectedRoute>
           <DashboardLayout>
             <UserManage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: "/user/add",
+      element: (
+        <ProtectedRoute>
+          <DashboardLayout>
+            <AddUser />
           </DashboardLayout>
         </ProtectedRoute>
       ),

@@ -3,24 +3,47 @@ import { usersAPI } from '../../api/users';
 import UserTable from '../../components/tables/UserTable';
 import UserForm from '../../components/forms/UserForm';
 import { useAuth } from '../../context/AuthContext';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Button,
+  CircularProgress,
+  Alert,
+  Box,
+  Typography,
+  Fab
+} from '@mui/material';
+import { Add } from '@mui/icons-material';
 
 const UserManage = () => {
-  const { user: currentUser } = useAuth(); // get logged-in user
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
+  const [paginatedUsers, setPaginatedUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
   const [formOpen, setFormOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [formErrors, setFormErrors] = useState({});
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [usersPerPage] = useState(10);
 
-  // Fetch users
+  // ✅ Fetch users
   const fetchUsers = async () => {
     try {
       setLoading(true);
       const data = await usersAPI.getAllUsers();
-      setUsers(Array.isArray(data) ? data : data.results || []);
+      const userList = Array.isArray(data) ? data : data.results || [];
+      setUsers(userList);
+      
+      // Calculate paginated users
+      const startIndex = (currentPage - 1) * usersPerPage;
+      const endIndex = startIndex + usersPerPage;
+      setPaginatedUsers(userList.slice(startIndex, endIndex));
     } catch (err) {
       setError(err.response?.data?.detail || err.message);
     } finally {
@@ -32,22 +55,36 @@ const UserManage = () => {
     fetchUsers();
   }, []);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this user?')) return;
+  // Update paginated users when page changes
+  useEffect(() => {
+    const startIndex = (currentPage - 1) * usersPerPage;
+    const endIndex = startIndex + usersPerPage;
+    setPaginatedUsers(users.slice(startIndex, endIndex));
+  }, [users, currentPage, usersPerPage]);
+
+  // ✅ DELETE - Updated to work with dialog
+  const handleDelete = async () => {
+    if (!selectedUser) return;
+    
     try {
-      await usersAPI.deleteUser(id);
-      setUsers(users.filter(u => u.id !== id));
-    } catch {
-      alert('Failed to delete');
+      await usersAPI.deleteUser(selectedUser.id);
+      setUsers(users.filter(u => u.id !== selectedUser.id));
+      setDeleteDialogOpen(false);
+      setSelectedUser(null);
+    } catch (err) {
+      setError('Failed to delete user');
+      console.error(err);
     }
   };
 
+  // ✅ EDIT
   const handleEdit = (user) => {
     setSelectedUser(user);
     setFormErrors({});
     setFormOpen(true);
   };
 
+  // ✅ ADD
   const handleAdd = () => {
     setSelectedUser(null);
     setFormErrors({});
@@ -59,6 +96,12 @@ const UserManage = () => {
     setSelectedUser(null);
   };
 
+  const handleDeleteDialogClose = () => {
+    setDeleteDialogOpen(false);
+    setSelectedUser(null);
+  };
+
+  // ✅ SUBMIT
   const handleFormSubmit = async (formData) => {
     setFormLoading(true);
     try {
@@ -67,7 +110,7 @@ const UserManage = () => {
       } else {
         await usersAPI.createUser(formData);
       }
-      fetchUsers();
+      await fetchUsers();
       handleFormClose();
     } catch (err) {
       if (err.response?.data) setFormErrors(err.response.data);
@@ -78,28 +121,51 @@ const UserManage = () => {
   };
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">User Management</h2>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" component="h2" sx={{ mb: 4, fontWeight: 'bold' }}>
+        User Management
+      </Typography>
 
-      {/* Show Add User only if staff or superuser */}
-      {(currentUser?.is_staff || currentUser?.is_superuser) && (
-        <button 
-          className="px-3 py-1 bg-blue-500 text-white rounded mb-4"
-          onClick={handleAdd}
-        >
-          ➕ Add User
-        </button>
+      {/* ✅ LOADING & ERROR HANDLING */}
+      {loading ? (
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+          <CircularProgress />
+        </Box>
+      ) : error ? (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      ) : (
+        <>
+          <UserTable
+            users={users}
+            paginatedUsers={paginatedUsers}
+            setSelectedUser={setSelectedUser}
+            setDeleteDialogOpen={setDeleteDialogOpen}
+            onEdit={handleEdit}
+            onDelete={(user) => {
+              setSelectedUser(user);
+              setDeleteDialogOpen(true);
+            }}
+          />
+          
+          {/* Pagination could be added here if needed */}
+        </>
       )}
 
-      <UserTable
-        users={users}
-        loading={loading}
-        error={error}
-        onDelete={handleDelete}
-        onEdit={handleEdit}
-        currentUser={currentUser} // Pass currentUser for permission checks
-      />
+      {/* ✅ ADD USER FAB - Only show for staff/superuser */}
+      {(currentUser?.is_staff || currentUser?.is_superuser) && (
+        <Fab
+          color="primary"
+          aria-label="add user"
+          sx={{ position: 'fixed', bottom: 16, right: 16 }}
+          onClick={handleAdd}
+        >
+          <Add />
+        </Fab>
+      )}
 
+      {/* ✅ USER FORM DIALOG */}
       <UserForm
         open={formOpen}
         onClose={handleFormClose}
@@ -108,7 +174,33 @@ const UserManage = () => {
         loading={formLoading}
         errors={formErrors}
       />
-    </div>
+
+      {/* ✅ DELETE CONFIRMATION DIALOG */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteDialogClose}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">
+          Confirm Delete
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            Are you sure you want to delete user "{selectedUser?.username}"? 
+            This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteDialogClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleDelete} color="error" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 };
 

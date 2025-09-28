@@ -18,25 +18,12 @@ import {
   Phone
 } from '@mui/icons-material';
 
-const ProfileForm = ({ 
-  formData, 
-  errors, 
-  loading, 
-  onChange, 
-  onSubmit, 
-  onCancel 
-}) => {
-  const theme = useTheme();
-
+// If you have a separate ProfileForm component, make sure it handles the form correctly
+const ProfileForm = ({ formData, errors, loading, onChange, onSubmit, onCancel }) => {
   return (
     <Box component="form" onSubmit={onSubmit} sx={{ p: 4 }}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ mb: 4 }}>
-        <Edit sx={{ mr: 2, verticalAlign: 'middle' }} />
-        Edit Profile Information
-      </Typography>
-      
       <Grid container spacing={3}>
-        <Grid item xs={12}>
+        <Grid item xs={12} sm={6}>
           <TextField
             fullWidth
             label="Username"
@@ -45,42 +32,22 @@ const ProfileForm = ({
             onChange={onChange}
             error={!!errors.username}
             helperText={errors.username}
-            required
-            variant="outlined"
-            InputProps={{
-              startAdornment: <AccountCircle sx={{ color: 'action.active', mr: 1 }} />
-            }}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-              }
-            }}
+            disabled={loading}
           />
         </Grid>
-        
-        <Grid item xs={12}>
+        <Grid item xs={12} sm={6}>
           <TextField
             fullWidth
-            label="Email Address"
+            label="Email"
             name="email"
             type="email"
             value={formData.email || ''}
             onChange={onChange}
             error={!!errors.email}
             helperText={errors.email}
-            required
-            variant="outlined"
-            InputProps={{
-              startAdornment: <Email sx={{ color: 'action.active', mr: 1 }} />
-            }}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-              }
-            }}
+            disabled={loading}
           />
         </Grid>
-        
         <Grid item xs={12} sm={6}>
           <TextField
             fullWidth
@@ -90,18 +57,9 @@ const ProfileForm = ({
             onChange={onChange}
             error={!!errors.first_name}
             helperText={errors.first_name}
-            variant="outlined"
-            InputProps={{
-              startAdornment: <Person sx={{ color: 'action.active', mr: 1 }} />
-            }}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-              }
-            }}
+            disabled={loading}
           />
         </Grid>
-        
         <Grid item xs={12} sm={6}>
           <TextField
             fullWidth
@@ -111,19 +69,10 @@ const ProfileForm = ({
             onChange={onChange}
             error={!!errors.last_name}
             helperText={errors.last_name}
-            variant="outlined"
-            InputProps={{
-              startAdornment: <Person sx={{ color: 'action.active', mr: 1 }} />
-            }}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-              }
-            }}
+            disabled={loading}
           />
         </Grid>
-        
-        <Grid item xs={12}>
+        <Grid item xs={12} sm={6}>
           <TextField
             fullWidth
             label="Phone Number"
@@ -131,51 +80,30 @@ const ProfileForm = ({
             value={formData.phone_number || ''}
             onChange={onChange}
             error={!!errors.phone_number}
-            helperText={errors.phone_number || 'Format: +1234567890'}
-            variant="outlined"
-            InputProps={{
-              startAdornment: <Phone sx={{ color: 'action.active', mr: 1 }} />
-            }}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-              }
-            }}
+            helperText={errors.phone_number}
+            disabled={loading}
           />
         </Grid>
       </Grid>
       
-      <Box mt={4} display="flex" gap={2}>
-        <Button
-          type="submit"
-          variant="contained"
-          startIcon={loading ? <CircularProgress size={20} /> : <Save />}
+      <Box sx={{ mt: 4, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+        <Button 
+          onClick={onCancel} 
           disabled={loading}
           size="large"
-          sx={{
-            px: 4,
-            py: 1.5,
-            borderRadius: 3,
-            background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-            boxShadow: 3,
-            '&:hover': {
-              boxShadow: 6,
-            }
-          }}
-        >
-          {loading ? 'Saving...' : 'Save Changes'}
-        </Button>
-        <Button
-          variant="outlined"
-          onClick={onCancel}
-          size="large"
-          sx={{ px: 4, py: 1.5, borderRadius: 3 }}
         >
           Cancel
+        </Button>
+        <Button 
+          type="submit" 
+          variant="contained" 
+          disabled={loading}
+          size="large"
+        >
+          {loading ? 'Updating...' : 'Update Profile'}
         </Button>
       </Box>
     </Box>
   );
 };
-
 export default ProfileForm;

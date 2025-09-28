@@ -1,22 +1,38 @@
+from django.contrib.auth import authenticate
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from django.contrib.auth import authenticate
+
 from .models import User
 
 
 class UserSerializer(serializers.ModelSerializer):
+    """Serializer for user model (read operations)."""
+    
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'email', 'first_name', 'last_name','is_active', 'is_staff', 'is_superuser',
+            'id', 'username', 'email', 'first_name', 'last_name',
+            'is_active', 'is_staff', 'is_superuser', 'date_joined',
             'phone_number', 'profile_image', 'groups', 'user_permissions'
         ]
-        read_only_fields = ['id', 'groups', 'user_permissions']
+        read_only_fields = [
+            'id', 'is_staff', 'is_superuser', 'date_joined',
+            'groups', 'user_permissions'
+        ]
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=8)
-    password_confirm = serializers.CharField(write_only=True)
+    """Serializer for user registration."""
+    
+    password = serializers.CharField(
+        write_only=True, 
+        min_length=8,
+        style={'input_type': 'password'}
+    )
+    password_confirm = serializers.CharField(
+        write_only=True,
+        style={'input_type': 'password'}
+    )
 
     class Meta:
         model = User
@@ -24,27 +40,51 @@ class RegisterSerializer(serializers.ModelSerializer):
             'username', 'email', 'password', 'password_confirm',
             'first_name', 'last_name', 'phone_number', 'profile_image'
         ]
+        extra_kwargs = {
+            'email': {'required': True},
+            'username': {'required': True}
+        }
 
     def validate(self, attrs):
+        """Validate registration data."""
         if attrs['password'] != attrs['password_confirm']:
-            raise serializers.ValidationError({"password_confirm": "Passwords do not match"})
+            raise serializers.ValidationError({
+                "password_confirm": "Passwords do not match"
+            })
+        
+        if User.objects.filter(email=attrs.get('email')).exists():
+            raise serializers.ValidationError({
+                "email": "A user with this email already exists."
+            })
+            
         return attrs
 
     def create(self, validated_data):
+        """Create and return a new user instance."""
         validated_data.pop('password_confirm')
         password = validated_data.pop('password')
-        user = User(**validated_data)
+        
+        user = User.objects.create_user(**validated_data)
         user.set_password(password)
         user.save()
+        
         return user
 
 
 class UpdateUserSerializer(serializers.ModelSerializer):
-    """
-    Allows updating user fields, including password (optional).
-    """
-    password = serializers.CharField(write_only=True, required=False)
-    password_confirm = serializers.CharField(write_only=True, required=False)
+    """Serializer for updating user profile (including optional password change)."""
+    
+    password = serializers.CharField(
+        write_only=True, 
+        required=False,
+        min_length=8,
+        style={'input_type': 'password'}
+    )
+    password_confirm = serializers.CharField(
+        write_only=True, 
+        required=False,
+        style={'input_type': 'password'}
+    )
 
     class Meta:
         model = User
@@ -54,70 +94,109 @@ class UpdateUserSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, attrs):
-        if 'password' in attrs or 'password_confirm' in attrs:
-            if attrs.get('password') != attrs.get('password_confirm'):
-                raise serializers.ValidationError({"password": "Passwords do not match"})
+        """Validate update data including optional password change."""
+        password = attrs.get('password')
+        password_confirm = attrs.get('password_confirm')
+        
+        if password or password_confirm:
+            if password != password_confirm:
+                raise serializers.ValidationError({
+                    "password": "Passwords do not match"
+                })
+        
         return attrs
 
     def update(self, instance, validated_data):
+        """Update user instance."""
         password = validated_data.pop('password', None)
         validated_data.pop('password_confirm', None)
+        
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+            
         if password:
             instance.set_password(password)
+            
         instance.save()
         return instance
-# serializer for change password
+
+
 class ChangePasswordSerializer(serializers.Serializer):
-    old_password = serializers.CharField(required=True, write_only=True)
-    new_password = serializers.CharField(required=True, write_only=True, min_length=8)
-    confirm_password = serializers.CharField(required=True, write_only=True)
+    """Serializer for password change functionality."""
     
+    old_password = serializers.CharField(
+        required=True, 
+        write_only=True,
+        style={'input_type': 'password'}
+    )
+    new_password = serializers.CharField(
+        required=True, 
+        write_only=True, 
+        min_length=8,
+        style={'input_type': 'password'}
+    )
+    confirm_password = serializers.CharField(
+        required=True, 
+        write_only=True,
+        style={'input_type': 'password'}
+    )
+
     def validate(self, data):
+        """Validate password change data."""
         if data['new_password'] != data['confirm_password']:
-            raise serializers.ValidationError("New passwords don't match")
+            raise serializers.ValidationError("New passwords do not match")
         return data
-    
+
     def validate_old_password(self, value):
+        """Validate that old password is correct."""
         user = self.context['request'].user
         if not user.check_password(value):
-            raise serializers.ValidationError("Old password is incorrect")
+            raise serializers.ValidationError("Current password is incorrect")
         return value
+
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
-    Allows login via email or username + password
+    Enhanced JWT token serializer supporting email/username login.
     """
+    
     def validate(self, attrs):
+        """Authenticate user via username or email."""
         username_or_email = attrs.get("username")
         password = attrs.get("password")
 
+        # Try username authentication first
         user = authenticate(
             request=self.context.get("request"),
             username=username_or_email,
             password=password
         )
 
-        # try email
+        # Fallback to email authentication
         if not user:
             try:
-                user_obj = User.objects.get(email=username_or_email)
+                user_by_email = User.objects.get(email=username_or_email)
                 user = authenticate(
                     request=self.context.get("request"),
-                    username=user_obj.username,
+                    username=user_by_email.username,
                     password=password
                 )
             except User.DoesNotExist:
-                pass
+                user = None
 
         if not user:
-            raise serializers.ValidationError({"detail": "Invalid credentials"})
+            raise serializers.ValidationError({
+                "detail": "Invalid credentials provided"
+            })
 
         if not user.is_active:
-            raise serializers.ValidationError({"detail": "User is disabled"})
+            raise serializers.ValidationError({
+                "detail": "Account is disabled"
+            })
 
+        # Generate tokens
         refresh = self.get_token(user)
+        
         return {
             "refresh": str(refresh),
             "access": str(refresh.access_token),

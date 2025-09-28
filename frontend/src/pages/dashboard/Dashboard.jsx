@@ -1,16 +1,85 @@
 import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Container,
+  Grid,
+  Paper,
+  Typography,
+  Button,
+  Card,
+  CardContent,
+  CardActions,
+  Avatar,
+  Chip,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  TextField,
+  InputAdornment,
+  Fab,
+  CircularProgress,
+  Alert,
+  Snackbar,
+  useTheme,
+  alpha,
+  Tooltip,
+  Menu,
+  DialogActions,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  Divider
+} from '@mui/material';
+import {
+  Dashboard as DashboardIcon,
+  People,
+  PersonAdd,
+  Settings,
+  Logout,
+  Search,
+  Block,
+  Edit,
+  Delete,
+  Visibility,
+  Email,
+  Phone,
+  CheckCircle,
+  AdminPanelSettings,
+  Person,
+  Analytics,
+  Notifications,
+  Security,
+  Add,
+  WorkspacePremium,
+  Refresh
+} from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { usersAPI } from '../../api/users';
+import AddUser from '../../pages/auth/AddUser';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const theme = useTheme();
+
+  // State management
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
-  // Fetch users on component mount
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -19,28 +88,20 @@ const Dashboard = () => {
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('Fetching users...');
-      console.log('Access token:', localStorage.getItem('access_token'));
-      
+
       const response = await usersAPI.getAllUsers();
-      console.log('Users response:', response);
-      
       setUsers(Array.isArray(response) ? response : response.results || []);
     } catch (err) {
       console.error('Error fetching users:', err);
-      console.error('Error response:', err.response);
-      
-      // Handle different error types
+
       if (err.response?.status === 403) {
-        setError('Access forbidden. Please check your authentication token.');
+        setError('Access forbidden. You may not have permission to view users.');
       } else if (err.response?.status === 401) {
         setError('Authentication failed. Please log in again.');
-        // Optionally redirect to login
-        // logout();
-        // navigate('/login');
-      } else if (err.response?.status === 404) {
-        setError('Users endpoint not found. Please check the API URL.');
+        setTimeout(() => {
+          logout();
+          navigate('/login');
+        }, 2000);
       } else {
         setError(`Failed to fetch users: ${err.response?.data?.detail || err.message}`);
       }
@@ -54,257 +115,587 @@ const Dashboard = () => {
     navigate('/login');
   };
 
-  const handleEditUser = (userData) => {
-    console.log('Edit user:', userData);
-    // Navigate to edit user page or open modal
-    // navigate(`/users/edit/${userData.id}`);
-  };
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
 
-  const handleDeleteUser = async (userId) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      try {
-        await usersAPI.deleteUser(userId);
-        setUsers(users.filter(u => u.id !== userId));
-        alert('User deleted successfully');
-      } catch (err) {
-        console.error('Error deleting user:', err);
-        alert('Failed to delete user');
-      }
+    try {
+      await usersAPI.deleteUser(selectedUser.id);
+      setUsers(users.filter(u => u.id !== selectedUser.id));
+      showSnackbar('User deleted successfully', 'success');
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      showSnackbar('Failed to delete user', 'error');
+    } finally {
+      setDeleteDialogOpen(false);
+      setSelectedUser(null);
     }
   };
 
-  const cardStyle = {
-    background: 'white',
-    borderRadius: '16px',
-    padding: '24px',
-    marginBottom: '24px',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
-    border: '1px solid rgba(0,0,0,0.05)'
+  const showSnackbar = (message, severity = 'success') => {
+    setSnackbar({ open: true, message, severity });
   };
 
-  const statsCardStyle = {
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    borderRadius: '12px',
-    padding: '20px',
-    textAlign: 'center',
-    color: 'white',
-    boxShadow: '0 4px 20px rgba(102, 126, 234, 0.3)',
-    transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedUser(null);
   };
 
-  const buttonStyle = {
-    padding: '8px 16px',
-    borderRadius: '8px',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500',
-    transition: 'all 0.2s ease',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '6px'
+  // Filter users based on search term
+  const filteredUsers = users.filter(user =>
+    user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.last_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Paginated users
+  const paginatedUsers = filteredUsers.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
+
+  // Statistics
+  const stats = {
+    total: users.length,
+    active: users.filter(u => u.is_active).length,
+    staff: users.filter(u => u.is_staff).length,
+    verified: users.filter(u => u.is_verified).length
   };
 
-  const editButtonStyle = {
-    ...buttonStyle,
-    background: '#e3f2fd',
-    color: '#1976d2',
-    border: '1px solid #bbdefb'
-  };
+  const StatCard = ({ title, value, icon: Icon, color, gradient }) => (
+    <Card
+      elevation={0}
+      sx={{
+        height: '100%',
+        background: gradient,
+        color: 'white',
+        position: 'relative',
+        overflow: 'hidden',
+        '&:hover': {
+          transform: 'translateY(-4px)',
+          boxShadow: 4,
+        },
+        transition: 'all 0.3s ease'
+      }}
+    >
+      <CardContent sx={{ pb: 2 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+          <Box>
+            <Typography variant="h3" fontWeight="bold" gutterBottom>
+              {value}
+            </Typography>
+            <Typography variant="h6" sx={{ opacity: 0.9 }}>
+              {title}
+            </Typography>
+          </Box>
+          <Icon sx={{ fontSize: 48, opacity: 0.8 }} />
+        </Box>
+      </CardContent>
+      <Box
+        sx={{
+          position: 'absolute',
+          top: -50,
+          right: -50,
+          width: 100,
+          height: 100,
+          borderRadius: '50%',
+          background: alpha('#fff', 0.1),
+        }}
+      />
+    </Card>
+  );
 
-  const deleteButtonStyle = {
-    ...buttonStyle,
-    background: '#ffebee',
-    color: '#d32f2f',
-    border: '1px solid #ffcdd2'
-  };
+  const QuickActionCard = ({ title, description, icon: Icon, color, onClick }) => (
+    <Card
+      elevation={0}
+      sx={{
+        height: '100%',
+        cursor: 'pointer',
+        border: `2px solid ${alpha(color, 0.2)}`,
+        transition: 'all 0.3s ease',
+        '&:hover': {
+          borderColor: color,
+          transform: 'translateY(-2px)',
+          boxShadow: 3,
+        },
+      }}
+      onClick={onClick}
+    >
+      <CardContent sx={{ textAlign: 'center', py: 3 }}>
+        <Icon sx={{ fontSize: 48, color, mb: 2 }} />
+        <Typography variant="h6" fontWeight="bold" gutterBottom>
+          {title}
+        </Typography>
+        <Typography variant="body2" color="textSecondary">
+          {description}
+        </Typography>
+      </CardContent>
+    </Card>
+  );
+
+  if (loading) {
+    return (
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="100vh"
+        sx={{
+          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.secondary.main, 0.1)} 100%)`
+        }}
+      >
+        <Box textAlign="center">
+          <CircularProgress size={60} />
+          <Typography variant="h6" sx={{ mt: 2 }}>
+            Loading dashboard...
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
 
   return (
-    <div style={{
-      padding: '24px',
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)'
-    }}>
-      <div style={{
-        maxWidth: '1400px',
-        margin: '0 auto'
-      }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
+        py: 3
+      }}
+    >
+      <Container maxWidth="xl">
         {/* Header */}
-        <div style={{
-          ...cardStyle,
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
-          marginBottom: '32px'
-        }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '16px'
-          }}>
-            <div>
-              <h1 style={{
-                margin: '0 0 8px 0',
-                fontSize: '32px',
-                fontWeight: '700'
-              }}>
-                Admin Dashboard 🚀
-              </h1>
-              <p style={{
-                margin: 0,
-                fontSize: '18px',
-                opacity: 0.9
-              }}>
-                Welcome back, {user?.username || 'Admin'}
-              </p>
-            </div>
-            
-            <button 
-              onClick={handleLogout}
-              style={{
-                background: 'rgba(255,255,255,0.2)',
-                border: '2px solid rgba(255,255,255,0.3)',
-                color: 'white',
-                padding: '12px 24px',
-                borderRadius: '10px',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                backdropFilter: 'blur(10px)'
-              }}
-              onMouseOver={(e) => {
-                e.target.style.background = 'rgba(255,255,255,0.3)';
-                e.target.style.transform = 'translateY(-2px)';
-              }}
-              onMouseOut={(e) => {
-                e.target.style.background = 'rgba(255,255,255,0.2)';
-                e.target.style.transform = 'translateY(0px)';
-              }}
-            >
-              🚪 Logout
-            </button>
-          </div>
-        </div>
+        <Paper
+          elevation={0}
+          sx={{
+            background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+            color: 'white',
+            borderRadius: 4,
+            p: 4,
+            mb: 4,
+            position: 'relative',
+            overflow: 'hidden'
+          }}
+        >
+          <Box
+            sx={{
+              position: 'absolute',
+              top: -100,
+              right: -100,
+              width: 200,
+              height: 200,
+              borderRadius: '50%',
+              background: alpha('#fff', 0.1),
+            }}
+          />
 
-        {/* Stats Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
-          gap: '24px',
-          marginBottom: '32px'
-        }}>
-          <div style={statsCardStyle}
-            onMouseOver={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 8px 30px rgba(102, 126, 234, 0.4)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.transform = 'translateY(0px)';
-              e.currentTarget.style.boxShadow = '0 4px 20px rgba(102, 126, 234, 0.3)';
-            }}
+          <Box position="relative" zIndex={1}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap">
+              <Box>
+                <Typography variant="h3" fontWeight="bold" gutterBottom>
+                  <DashboardIcon sx={{ mr: 2, fontSize: 'inherit' }} />
+                  Admin Dashboard
+                </Typography>
+                <Typography variant="h6" sx={{ opacity: 0.9 }}>
+                  Welcome back, {user?.first_name || user?.username || 'Admin'}
+                </Typography>
+                <Typography variant="body1" sx={{ opacity: 0.8, mt: 1 }}>
+                  Manage your application users and settings
+                </Typography>
+              </Box>
+
+              <Box display="flex" gap={2}>
+                <Button
+                  variant="outlined"
+                  startIcon={<Refresh />}
+                  onClick={fetchUsers}
+                  sx={{
+                    borderColor: 'rgba(255,255,255,0.5)',
+                    color: 'white',
+                    '&:hover': {
+                      borderColor: 'rgba(255,255,255,0.8)',
+                      bgcolor: 'rgba(255,255,255,0.1)'
+                    }
+                  }}
+                >
+                  Refresh
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<Logout />}
+                  onClick={handleLogout}
+                  sx={{
+                    bgcolor: 'rgba(255,255,255,0.2)',
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' }
+                  }}
+                >
+                  Logout
+                </Button>
+              </Box>
+            </Box>
+          </Box>
+        </Paper>
+
+        {/* Error Alert */}
+        {error && (
+          <Alert
+            severity="error"
+            sx={{ mb: 3, borderRadius: 2 }}
+            action={
+              <Button color="inherit" size="small" onClick={fetchUsers}>
+                Retry
+              </Button>
+            }
           >
-            <div style={{ fontSize: '48px', marginBottom: '12px' }}>👥</div>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', opacity: 0.9 }}>Total Users</h3>
-            <p style={{ margin: 0, fontSize: '32px', fontWeight: '700' }}>
-              {users.length}
-            </p>
-          </div>
+            {error}
+          </Alert>
+        )}
 
-          <div style={{...statsCardStyle, background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)'}}
-            onMouseOver={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 8px 30px rgba(40, 167, 69, 0.4)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.transform = 'translateY(0px)';
-              e.currentTarget.style.boxShadow = '0 4px 20px rgba(40, 167, 69, 0.3)';
-            }}
+        {/* Statistics Cards */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard
+              title="Total Users"
+              value={stats.total}
+              icon={People}
+              gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard
+              title="Active Users"
+              value={stats.active}
+              icon={CheckCircle}
+              gradient="linear-gradient(135deg, #28a745 0%, #20c997 100%)"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard
+              title="Staff Members"
+              value={stats.staff}
+              icon={Security}
+              gradient="linear-gradient(135deg, #fd7e14 0%, #ffc107 100%)"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard
+              title="Verified Users"
+              value={stats.verified}
+              icon={Notifications}
+              gradient="linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%)"
+            />
+          </Grid>
+        </Grid>
+
+        <Grid container spacing={3}>
+          {/* Quick Actions */}
+          <Grid item xs={12} lg={4}>
+            <Paper elevation={0} sx={{ p: 3, borderRadius: 3, height: 'fit-content' }}>
+              <Typography variant="h6" fontWeight="bold" gutterBottom>
+                Quick Actions
+              </Typography>
+
+              <Grid container spacing={2} sx={{ mt: 1 }}>
+                <Grid item xs={12}>
+                  <QuickActionCard
+                    title="Add New User"
+                    description="Create a new user account"
+                    icon={PersonAdd}
+                    color={theme.palette.primary.main}
+                    onClick={() => navigate('/user/add')}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <QuickActionCard
+                    title="User Analytics"
+                    description="View user statistics and reports"
+                    icon={Analytics}
+                    color={theme.palette.info.main}
+                    onClick={() => navigate('/analytics')}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <QuickActionCard
+                    title="System Settings"
+                    description="Configure application settings"
+                    icon={Settings}
+                    color={theme.palette.secondary.main}
+                    onClick={() => navigate('/settings')}
+                  />
+                </Grid>
+              </Grid>
+            </Paper>
+          </Grid>
+
+          {/* Users Table */}
+          <Grid item xs={12} lg={8}>
+            <Paper elevation={0} sx={{ borderRadius: 3 }}>
+              {/* Table Header */}
+              <Box sx={{ p: 3, pb: 2 }}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                  <Typography variant="h6" fontWeight="bold">
+                    Users Management
+                  </Typography>
+                  <Chip
+                    label={`${filteredUsers.length} users`}
+                    color="primary"
+                    variant="outlined"
+                  />
+                </Box>
+
+                <Box display="flex" gap={2} alignItems="center">
+                  <TextField
+                    placeholder="Search users..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    size="small"
+                    sx={{ flex: 1, maxWidth: 400 }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Search />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  <Button
+                    variant="outlined"
+                    startIcon={<Add />}
+                    onClick={() => navigate('/user/add')}
+                  >
+                    Add User
+                  </Button>
+                </Box>
+              </Box>
+
+              {/* Table */}
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
+                      <TableCell><strong>User</strong></TableCell>
+                      <TableCell><strong>Email</strong></TableCell>
+                      <TableCell><strong>Status</strong></TableCell>
+                      <TableCell><strong>Role</strong></TableCell>
+                      <TableCell><strong>Actions</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {paginatedUsers.map((user) => (
+                      <TableRow
+                        key={user.id}
+                        sx={{ '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.02) } }}
+                      >
+                        <TableCell>
+                          <Box display="flex" alignItems="center" gap={2}>
+                            <Avatar
+                              src={user.profile_image}
+                              sx={{ width: 40, height: 40 }}
+                            >
+                              {user.username?.charAt(0).toUpperCase()}
+                            </Avatar>
+                            <Box>
+                              <Typography fontWeight="medium">
+                                {user.first_name && user.last_name
+                                  ? `${user.first_name} ${user.last_name}`
+                                  : user.username
+                                }
+                              </Typography>
+                              <Typography variant="body2" color="textSecondary">
+                                @{user.username}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">
+                            {user.email}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Box display="flex" gap={1}>
+                            <Chip
+                              label={user.is_active ? 'Active' : 'Inactive'}
+                              color={user.is_active ? 'success' : 'error'}
+                              size="small"
+                            />
+                            {user.is_verified && (
+                              <Chip
+                                label="Verified"
+                                color="info"
+                                size="small"
+                              />
+                            )}
+                          </Box>
+                        </TableCell>
+
+                        <TableCell>
+                          <Tooltip
+                            title={
+                              !user.is_active
+                                ? `Suspended ${user.is_superuser ? 'Administrator' : user.is_staff ? 'Staff' : 'User'} account`
+                                : user.is_superuser
+                                  ? 'Full system administrator privileges'
+                                  : user.is_staff
+                                    ? 'Staff member with limited admin access'
+                                    : 'Standard user account with basic permissions'
+                            }
+                            arrow
+                          >
+                            <Chip
+                              icon={
+                                !user.is_active
+                                  ? <Block fontSize="small" />
+                                  : user.is_superuser
+                                    ? <AdminPanelSettings fontSize="small" />
+                                    : user.is_staff
+                                      ? <WorkspacePremium fontSize="small" />
+                                      : <Person fontSize="small" />
+                              }
+                              label={
+                                !user.is_active
+                                  ? `Suspended ${user.is_superuser ? 'Admin' : user.is_staff ? 'Staff' : 'User'}`
+                                  : user.is_superuser
+                                    ? 'System Admin'
+                                    : user.is_staff
+                                      ? 'Staff'
+                                      : 'User'
+                              }
+                              color={
+                                !user.is_active
+                                  ? 'default'           // Grey for suspended (inactive) users
+                                  : user.is_superuser
+                                    ? 'error'           // Red for active super admins (highest priority)
+                                    : user.is_staff
+                                      ? 'warning'       // Orange/amber for active staff
+                                      : 'success'       // Green for active regular users
+                              }
+                              size="small"
+                              variant={user.is_active ? 'filled' : 'outlined'}
+                              sx={{
+                                fontWeight: 600,
+                                fontSize: '0.75rem',
+                                minWidth: user.is_active ? 100 : 120,
+                                cursor: 'pointer',
+                                opacity: user.is_active ? 1 : 0.7,
+                                '&:hover': {
+                                  opacity: 0.9,
+                                  transform: 'translateY(-1px)',
+                                  transition: 'all 0.2s ease'
+                                }
+                              }}
+                            />
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell>
+                          <Box display="flex" gap={1}>
+                            <Tooltip title="View Profile">
+                              <IconButton
+                                size="small"
+                                onClick={() => navigate(`/profile/${user.id}`)}
+                              >
+                                <Visibility />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Edit User">
+                              <IconButton
+                                size="small"
+                                onClick={() => navigate(`/users/edit/${user.id}`)}
+                              >
+                                <Edit />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Delete User">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => {
+                                  setSelectedUser(user);
+                                  setDeleteDialogOpen(true);
+                                }}
+                              >
+                                <Delete />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              {/* Pagination */}
+              <TablePagination
+                component="div"
+                count={filteredUsers.length}
+                page={page}
+                onPageChange={(e, newPage) => setPage(newPage)}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={(e) => {
+                  setRowsPerPage(parseInt(e.target.value, 10));
+                  setPage(0);
+                }}
+                rowsPerPageOptions={[5, 10, 25, 50]}
+              />
+            </Paper>
+          </Grid>
+        </Grid>
+      </Container>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Typography variant="h6" display="flex" alignItems="center">
+            <Delete sx={{ mr: 1, color: 'error.main' }} />
+            Delete User
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            This action cannot be undone
+          </Alert>
+          <Typography>
+            Are you sure you want to delete user <strong>"{selectedUser?.username}"</strong>?
+            This will permanently remove all user data.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDeleteUser}
+            startIcon={<Delete />}
           >
-            <div style={{ fontSize: '48px', marginBottom: '12px' }}>✅</div>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', opacity: 0.9 }}>Active Users</h3>
-            <p style={{ margin: 0, fontSize: '32px', fontWeight: '700' }}>
-              {users.filter(u => u.is_active).length}
-            </p>
-          </div>
+            Delete User
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-          <div style={{...statsCardStyle, background: 'linear-gradient(135deg, #fd7e14 0%, #ffc107 100%)'}}
-            onMouseOver={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 8px 30px rgba(253, 126, 20, 0.4)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.transform = 'translateY(0px)';
-              e.currentTarget.style.boxShadow = '0 4px 20px rgba(253, 126, 20, 0.3)';
-            }}
-          >
-            <div style={{ fontSize: '48px', marginBottom: '12px' }}>📊</div>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', opacity: 0.9 }}>Reports</h3>
-            <p style={{ margin: 0, fontSize: '32px', fontWeight: '700' }}>24</p>
-          </div>
-
-          <div style={{...statsCardStyle, background: 'linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%)'}}
-            onMouseOver={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 8px 30px rgba(111, 66, 193, 0.4)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.transform = 'translateY(0px)';
-              e.currentTarget.style.boxShadow = '0 4px 20px rgba(111, 66, 193, 0.3)';
-            }}
-          >
-            <div style={{ fontSize: '48px', marginBottom: '12px' }}>⚡</div>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', opacity: 0.9 }}>Activities</h3>
-            <p style={{ margin: 0, fontSize: '32px', fontWeight: '700' }}>156</p>
-          </div>
-        </div>
-
-        
-
-        {/* Quick Actions */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '16px',
-          marginTop: '32px'
-        }}>
-          {[
-            { icon: '👤', text: 'Add User', color: '#28a745' },
-            { icon: '📊', text: 'User Reports', color: '#17a2b8' },
-            { icon: '⚙️', text: 'Settings', color: '#6c757d' },
-            { icon: '📧', text: 'Send Email', color: '#fd7e14' }
-          ].map((action, index) => (
-            <button key={index} style={{
-              background: 'white',
-              border: `2px solid ${action.color}`,
-              borderRadius: '12px',
-              padding: '20px',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              textAlign: 'center',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-            }}
-            onMouseOver={(e) => {
-              e.target.style.background = action.color;
-              e.target.style.color = 'white';
-              e.target.style.transform = 'translateY(-4px)';
-              e.target.style.boxShadow = '0 8px 20px rgba(0,0,0,0.15)';
-            }}
-            onMouseOut={(e) => {
-              e.target.style.background = 'white';
-              e.target.style.color = 'inherit';
-              e.target.style.transform = 'translateY(0px)';
-              e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
-            }}
-            >
-              <div style={{ fontSize: '32px', marginBottom: '12px' }}>{action.icon}</div>
-              <div style={{ fontWeight: '600', color: action.color, fontSize: '16px' }}>{action.text}</div>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ borderRadius: 2 }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 };
 
