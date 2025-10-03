@@ -13,6 +13,7 @@ import Profile from '../pages/auth/Profile';
 import AddUser from '../pages/auth/AddUser';
 import EmailVerification from '../pages/auth/EmailVerification'
 import StoreList from '../pages/store/StoreList'
+import CashbookList from '../pages/cashbook/CashbookList';
 
 const AppRoutes = () => {
   const router = createBrowserRouter([
@@ -94,6 +95,17 @@ const AppRoutes = () => {
         </ProtectedRoute>
       ),
     },
+    {
+      path: "/stores/:storeId/cashbooks",
+      element: (
+        <ProtectedRoute>
+          <DashboardLayout>
+            <CashbookList />
+          </DashboardLayout>
+        </ProtectedRoute>
+      ),
+    },
+
     {
       path: "*",
       element: (

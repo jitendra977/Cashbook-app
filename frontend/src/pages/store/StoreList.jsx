@@ -25,7 +25,8 @@ const StoreList = () => {
     createStore,
     updateStore,
     deleteStore,
-    clearError
+    clearError,
+    fetchStoreUsers,
   } = useStore();
 
   const [success, setSuccess] = useState('');
@@ -244,6 +245,9 @@ const StoreList = () => {
                       <Typography variant="caption" color="text.secondary">
                         Created: {formatDate(store.created_at)}
                       </Typography>
+                       <Typography variant="caption" color="text.secondary">
+                        Created By: {store.created_by}
+                      </Typography>
                     </Box>
                     <Box display="flex" alignItems="center">
                       <CalendarToday sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
@@ -258,12 +262,11 @@ const StoreList = () => {
                     <Button
                       size="small"
                       startIcon={<Visibility />}
-                      onClick={() => navigate(`/stores/${store.id}`)}
+                      onClick={() => navigate(`/stores/${store.id}/cashbooks`)}
                       variant="outlined"
                     >
-                      View Details
+                      View Cashbooks
                     </Button>
-
                     <Box display="flex" gap={1}>
                       <Tooltip title="Edit Store">
                         <IconButton 
