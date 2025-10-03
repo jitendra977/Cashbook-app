@@ -29,8 +29,13 @@ export const TransactionsProvider = ({ children }) => {
       setTransactionTypes(data);
       return data;
     } catch (err) {
-      setError(err.details || 'Failed to fetch transaction types');
-      throw err;
+      if (err.response?.status === 404) {
+        setTransactionTypes([]);
+        setError('Transaction types endpoint not found (404)');
+      } else {
+        setError(err.details || 'Failed to fetch transaction types');
+      }
+      // Don't throw for 404, just handle gracefully
     } finally {
       setLoading(false);
     }
@@ -91,8 +96,12 @@ export const TransactionsProvider = ({ children }) => {
       setTransactionCategories(data);
       return data;
     } catch (err) {
-      setError(err.details || 'Failed to fetch transaction categories');
-      throw err;
+      if (err.response?.status === 404) {
+        setTransactionCategories([]);
+        setError('Transaction categories endpoint not found (404)');
+      } else {
+        setError(err.details || 'Failed to fetch transaction categories');
+      }
     } finally {
       setLoading(false);
     }

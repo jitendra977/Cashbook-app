@@ -1,6 +1,15 @@
 // src/pages/cashbook/CashbookList.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import TransactionList from '../../components/transactions/TransactionList';
+import TransactionFilters from '../../components/transactions/TransactionFilters';
+import SummaryCards from '../../components/transactions/SummaryCards';
+import MonthlyChart from '../../components/transactions/MonthlyChart';
+import CategoryChart from '../../components/transactions/CategoryChart';
+import QuickAction from '../../components/transactions/QuickAction';
+import Loader from '../../components/common/Loader';
+import ErrorMessage from '../../components/transactions/ErrorMessage';
+import '../../components/css/transactions/Dashboard.css';
 import {
   Box, Paper, Typography, Button, TextField,
   Alert, CircularProgress, Card, CardContent, Grid,
@@ -52,12 +61,20 @@ const CashbookList = () => {
     }
   }, [storeId, fetchStore, fetchStoreCashbooks]);
 
-  // ✅ Get current store details
-  const currentStoreData = currentStore || stores.find(store => store.id === parseInt(storeId));
+  // ✅ Get current store details, fallback to "Unknown Store" if not found
+  const currentStoreData = currentStore || stores.find(store => store.id === parseInt(storeId)) || { name: "Unknown Store" };
 
   // ✅ Filter cashbooks based on search term
   const filteredCashbooks = cashbooks.filter(cashbook =>
-    cashbook.name.toLowerCase().includes(searchTerm.toLowerCase())
+    cashbook.name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Calculate totals for filtered cashbooks
+  const totalTransactions = filteredCashbooks.reduce(
+    (sum, cb) => sum + (cb.transaction_count ?? 0), 0
+  );
+  const totalBalance = filteredCashbooks.reduce(
+    (sum, cb) => sum + (typeof cb.balance === "number" ? cb.balance : 0), 0
   );
 
   const handleSaveCashbook = async () => {
@@ -218,6 +235,29 @@ const CashbookList = () => {
         </Box>
       </Paper>
 
+      {/* TOTALS SUMMARY */}
+      <Paper
+        elevation={1}
+        sx={{
+          mb: 3,
+          p: 2,
+          borderRadius: 2,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.07)} 0%, ${alpha(theme.palette.secondary.main, 0.07)} 100%)`
+        }}
+      >
+        <Typography variant="h6">
+          Total Transactions: <strong>{totalTransactions}</strong>
+        </Typography>
+        <Typography variant="h6">
+          Total Balance: <strong style={{ color: totalBalance >= 0 ? theme.palette.success.main : theme.palette.error.main }}>
+            ${totalBalance.toFixed(2)}
+          </strong>
+        </Typography>
+      </Paper>
+
       {/* SEARCH BAR */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <TextField
@@ -225,8 +265,8 @@ const CashbookList = () => {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           sx={{ width: 300 }}
-          InputProps={{ 
-            startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} /> 
+          InputProps={{
+            startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />
           }}
         />
         <Typography variant="body2" color="text.secondary">
@@ -284,8 +324,8 @@ const CashbookList = () => {
         <Grid container spacing={3}>
           {filteredCashbooks.map((cashbook) => (
             <Grid item xs={12} sm={6} lg={4} key={cashbook.id}>
-              <Card 
-                sx={{ 
+              <Card
+                sx={{
                   height: '100%',
                   transition: 'all 0.2s ease-in-out',
                   '&:hover': {
@@ -300,11 +340,11 @@ const CashbookList = () => {
                     <Typography variant="h6" component="h2" sx={{ fontWeight: 600 }}>
                       {cashbook.name}
                     </Typography>
-                    <Chip 
-                      label="Active" 
-                      color="success" 
-                      size="small" 
-                      variant="outlined" 
+                    <Chip
+                      label={cashbook.is_active ? "Active" : "Inactive"}
+                      color={cashbook.is_active ? "success" : "default"}
+                      size="small"
+                      variant="outlined"
                     />
                   </Box>
 
@@ -321,8 +361,11 @@ const CashbookList = () => {
                       <Typography variant="caption" color="text.secondary">
                         Created: {formatDate(cashbook.created_at)}
                       </Typography>
+                    </Box>
+                    <Box display="flex" alignItems="center" sx={{ mb: 1 }}>
+                      <AccountBalance sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
                       <Typography variant="caption" color="text.secondary">
-                        created By: {cashbook.created_by}
+                        Balance: {typeof cashbook.balance === "number" ? `$${cashbook.balance.toFixed(2)}` : "N/A"}
                       </Typography>
                     </Box>
                     <Box display="flex" alignItems="center">
@@ -333,12 +376,12 @@ const CashbookList = () => {
                     </Box>
                   </Box>
 
-                  {/* STATISTICS PLACEHOLDER */}
-                  <Paper 
-                    variant="outlined" 
-                    sx={{ 
-                      p: 2, 
-                      mb: 3, 
+                  {/* STATISTICS */}
+                  <Paper
+                    variant="outlined"
+                    sx={{
+                      p: 2,
+                      mb: 3,
                       backgroundColor: alpha(theme.palette.primary.main, 0.02),
                       borderColor: alpha(theme.palette.primary.main, 0.1)
                     }}
@@ -349,15 +392,15 @@ const CashbookList = () => {
                           Transactions
                         </Typography>
                         <Typography variant="h6" color="primary.main">
-                          0
+                          {cashbook.transaction_count ?? 0}
                         </Typography>
                       </Box>
                       <Box textAlign="center">
                         <Typography variant="caption" color="text.secondary">
                           Balance
                         </Typography>
-                        <Typography variant="h6" color="success.main">
-                          $0.00
+                        <Typography variant="h6" color={cashbook.balance >= 0 ? "success.main" : "error.main"}>
+                          ${typeof cashbook.balance === "number" ? cashbook.balance.toFixed(2) : "0.00"}
                         </Typography>
                       </Box>
                     </Box>
@@ -373,11 +416,10 @@ const CashbookList = () => {
                     >
                       View Transactions
                     </Button>
-
                     <Box display="flex" gap={1}>
                       <Tooltip title="Edit Cashbook">
-                        <IconButton 
-                          onClick={() => openEdit(cashbook)} 
+                        <IconButton
+                          onClick={() => openEdit(cashbook)}
                           size="small"
                           color="primary"
                         >
@@ -385,8 +427,8 @@ const CashbookList = () => {
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Delete Cashbook">
-                        <IconButton 
-                          onClick={() => handleDeleteCashbook(cashbook.id, cashbook.name)} 
+                        <IconButton
+                          onClick={() => handleDeleteCashbook(cashbook.id, cashbook.name)}
                           size="small"
                           color="error"
                         >

@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import TransactionList from '../../components/transactions/TransactionList';
+import TransactionFilters from '../../components/transactions/TransactionFilters';
+import SummaryCards from '../../components/transactions/SummaryCards';
+import MonthlyChart from '../../components/transactions/MonthlyChart';
+import CategoryChart from '../../components/transactions/CategoryChart';
+import QuickAction from '../../components/transactions/QuickAction';
+import Loader from '../../components/common/Loader';
+import ErrorMessage from '../../components/transactions/ErrorMessage';
+import '../../components/css/transactions/Dashboard.css';
 import {
   Box, Paper, Typography, Button, TextField,
   Alert, CircularProgress, Card, CardContent, Grid,

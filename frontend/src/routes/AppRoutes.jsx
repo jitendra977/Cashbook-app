@@ -14,6 +14,8 @@ import AddUser from '../pages/auth/AddUser';
 import EmailVerification from '../pages/auth/EmailVerification'
 import StoreList from '../pages/store/StoreList'
 import CashbookList from '../pages/cashbook/CashbookList';
+import TransactionsDashboard from '../pages/transactions/TransactionsDashboard';
+import { TransactionsProvider } from '../context/TransactionsContext';
 
 const AppRoutes = () => {
   const router = createBrowserRouter([
@@ -101,6 +103,18 @@ const AppRoutes = () => {
         <ProtectedRoute>
           <DashboardLayout>
             <CashbookList />
+          </DashboardLayout>
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: "/stores/:storeId/cashbooks/:cashbookId/transactions",
+      element: (
+        <ProtectedRoute>
+          <DashboardLayout>
+            <TransactionsProvider>
+              <TransactionsDashboard />
+            </TransactionsProvider>
           </DashboardLayout>
         </ProtectedRoute>
       ),
