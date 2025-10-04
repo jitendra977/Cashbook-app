@@ -5,6 +5,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider } from './context/AuthContext';
 import AppRoutes from './routes/AppRoutes';
 import { StoreProvider } from './context/StoreContext';
+import { TransactionsProvider } from './context/TransactionsContext'; // Fixed import name
 
 const theme = createTheme({
   palette: {
@@ -22,9 +23,11 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <StoreProvider>
-        <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+        <TransactionsProvider> {/* Fixed component name */}
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </TransactionsProvider>
       </StoreProvider>
     </ThemeProvider>
   );

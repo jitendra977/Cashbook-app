@@ -1,352 +1,329 @@
 // src/hooks/useTransactions.js
-import { useState, useEffect, useCallback } from 'react';
-import transactionsAPI from '../api/transactions';
+import { useCallback } from 'react';
+import { useTransactionsContext } from '../contexts/TransactionsContext';
 
-// Hook for fetching transactions with filters
-export const useTransactions = (initialParams = {}) => {
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [params, setParams] = useState(initialParams);
+/**
+ * Main hook for transaction operations
+ * Provides all transaction-related methods from context
+ */
+export const useTransactions = (storeId = null, cashbookId = null) => {
+  const context = useTransactionsContext();
 
-  const fetchTransactions = useCallback(async (newParams) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const queryParams = newParams || params;
-      const data = await transactionsAPI.getTransactions(queryParams);
-      setTransactions(data);
-      return data;
-    } catch (err) {
-      setError(err.details || 'Failed to fetch transactions');
-      throw err;
-    } finally {
-      setLoading(false);
+  // Auto-fetch transactions based on store/cashbook
+  const fetchData = useCallback(async (params = {}) => {
+    if (cashbookId) {
+      return await context.fetchTransactionsByCashbook(cashbookId, params);
+    } else if (storeId) {
+      return await context.fetchTransactionsByStore(storeId, params);
+    } else {
+      return await context.fetchTransactions(params);
     }
-  }, [params]);
-
-  const updateParams = useCallback((newParams) => {
-    setParams(prev => ({ ...prev, ...newParams }));
-  }, []);
-
-  const refresh = useCallback(() => {
-    return fetchTransactions();
-  }, [fetchTransactions]);
-
-  useEffect(() => {
-    fetchTransactions();
-  }, [params]);
+  }, [context, storeId, cashbookId]);
 
   return {
-    transactions,
-    loading,
-    error,
-    params,
-    updateParams,
-    refresh,
-    setTransactions,
+    // State
+    transactions: context.transactions,
+    loading: context.loading,
+    error: context.error,
+    pagination: context.pagination,
+
+    // Methods
+    fetchTransactions: fetchData,
+    fetchTransaction: context.fetchTransaction,
+    createTransaction: context.createTransaction,
+    updateTransaction: context.updateTransaction,
+    partialUpdateTransaction: context.partialUpdateTransaction,
+    deleteTransaction: context.deleteTransaction,
+    bulkCreate: context.bulkCreateTransactions,
+    exportTransactions: context.exportTransactions,
+
+    // Filtered fetches
+    fetchByStore: context.fetchTransactionsByStore,
+    fetchByCashbook: context.fetchTransactionsByCashbook,
+    fetchRecent: context.fetchRecentTransactions,
+    fetchPending: context.fetchPendingTransactions,
   };
 };
 
-// Hook for a single transaction
-export const useTransaction = (id) => {
-  const [transaction, setTransaction] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const fetchTransaction = useCallback(async () => {
-    if (!id) return;
-    
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await transactionsAPI.getTransaction(id);
-      setTransaction(data);
-      return data;
-    } catch (err) {
-      setError(err.details || 'Failed to fetch transaction');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    fetchTransaction();
-  }, [fetchTransaction]);
-
-  return {
-    transaction,
-    loading,
-    error,
-    refresh: fetchTransaction,
-  };
-};
-
-// Hook for transaction types
+/**
+ * Hook for transaction types
+ */
 export const useTransactionTypes = () => {
-  const [types, setTypes] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const fetchTypes = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await transactionsAPI.getTransactionTypes();
-      setTypes(data);
-      return data;
-    } catch (err) {
-      setError(err.details || 'Failed to fetch transaction types');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const createType = useCallback(async (typeData) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const newType = await transactionsAPI.createTransactionType(typeData);
-      setTypes(prev => [...prev, newType]);
-      return newType;
-    } catch (err) {
-      setError(err.details || 'Failed to create transaction type');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const updateType = useCallback(async (id, typeData) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const updated = await transactionsAPI.updateTransactionType(id, typeData);
-      setTypes(prev => prev.map(type => type.id === id ? updated : type));
-      return updated;
-    } catch (err) {
-      setError(err.details || 'Failed to update transaction type');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const deleteType = useCallback(async (id) => {
-    setLoading(true);
-    setError(null);
-    try {
-      await transactionsAPI.deleteTransactionType(id);
-      setTypes(prev => prev.filter(type => type.id !== id));
-    } catch (err) {
-      setError(err.details || 'Failed to delete transaction type');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchTypes();
-  }, [fetchTypes]);
+  const context = useTransactionsContext();
 
   return {
-    types,
-    loading,
-    error,
-    refresh: fetchTypes,
-    createType,
-    updateType,
-    deleteType,
+    types: context.transactionTypes,
+    loading: context.loading,
+    error: context.error,
+    
+    fetchTypes: context.fetchTransactionTypes,
+    fetchActiveTypes: context.fetchActiveTransactionTypes,
+    fetchTypesByNature: context.fetchTransactionTypesByNature,
+    createType: context.createTransactionType,
+    updateType: context.updateTransactionType,
+    deleteType: context.deleteTransactionType,
   };
 };
 
-// Hook for transaction categories
+/**
+ * Hook for transaction categories
+ */
 export const useTransactionCategories = () => {
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const fetchCategories = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await transactionsAPI.getTransactionCategories();
-      setCategories(data);
-      return data;
-    } catch (err) {
-      setError(err.details || 'Failed to fetch transaction categories');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const createCategory = useCallback(async (categoryData) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const newCategory = await transactionsAPI.createTransactionCategory(categoryData);
-      setCategories(prev => [...prev, newCategory]);
-      return newCategory;
-    } catch (err) {
-      setError(err.details || 'Failed to create transaction category');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const updateCategory = useCallback(async (id, categoryData) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const updated = await transactionsAPI.updateTransactionCategory(id, categoryData);
-      setCategories(prev => prev.map(cat => cat.id === id ? updated : cat));
-      return updated;
-    } catch (err) {
-      setError(err.details || 'Failed to update transaction category');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const deleteCategory = useCallback(async (id) => {
-    setLoading(true);
-    setError(null);
-    try {
-      await transactionsAPI.deleteTransactionCategory(id);
-      setCategories(prev => prev.filter(cat => cat.id !== id));
-    } catch (err) {
-      setError(err.details || 'Failed to delete transaction category');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+  const context = useTransactionsContext();
 
   return {
-    categories,
-    loading,
-    error,
-    refresh: fetchCategories,
-    createCategory,
-    updateCategory,
-    deleteCategory,
+    categories: context.transactionCategories,
+    loading: context.loading,
+    error: context.error,
+    
+    fetchCategories: context.fetchTransactionCategories,
+    fetchActiveCategories: context.fetchActiveTransactionCategories,
+    createCategory: context.createTransactionCategory,
+    updateCategory: context.updateTransactionCategory,
+    deleteCategory: context.deleteTransactionCategory,
   };
 };
 
-// Hook for transaction summary
-export const useTransactionSummary = (initialParams = {}) => {
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [params, setParams] = useState(initialParams);
+/**
+ * Hook for transaction summary and analytics
+ */
+export const useTransactionSummary = (storeId = null, cashbookId = null) => {
+  const context = useTransactionsContext();
 
-  const fetchSummary = useCallback(async (newParams) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const queryParams = newParams || params;
-      const data = await transactionsAPI.getTransactionSummary(queryParams);
-      setSummary(data);
-      return data;
-    } catch (err) {
-      setError(err.details || 'Failed to fetch transaction summary');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [params]);
+  const fetchSummary = useCallback(async (dateRange = {}) => {
+    const params = { ...dateRange };
+    if (storeId) params.store = storeId;
+    if (cashbookId) params.cashbook = cashbookId;
+    
+    return await context.fetchTransactionSummary(params);
+  }, [context, storeId, cashbookId]);
 
-  const updateParams = useCallback((newParams) => {
-    setParams(prev => ({ ...prev, ...newParams }));
-  }, []);
+  const fetchByCategory = useCallback(async (dateRange = {}) => {
+    const params = { ...dateRange };
+    if (storeId) params.store = storeId;
+    if (cashbookId) params.cashbook = cashbookId;
+    
+    return await context.fetchTransactionsByCategory(params);
+  }, [context, storeId, cashbookId]);
 
-  useEffect(() => {
-    fetchSummary();
-  }, [params]);
+  const fetchByType = useCallback(async (dateRange = {}) => {
+    const params = { ...dateRange };
+    if (storeId) params.store = storeId;
+    if (cashbookId) params.cashbook = cashbookId;
+    
+    return await context.fetchTransactionsByType(params);
+  }, [context, storeId, cashbookId]);
 
   return {
-    summary,
-    loading,
-    error,
-    params,
-    updateParams,
-    refresh: fetchSummary,
+    summary: context.summary,
+    loading: context.loading,
+    error: context.error,
+    
+    fetchSummary,
+    fetchByCategory,
+    fetchByType,
   };
 };
 
-// Hook for creating/updating transactions with form handling
-export const useTransactionForm = (initialData = null, onSuccess) => {
-  const [formData, setFormData] = useState(initialData || {
-    cashbook: '',
-    type: '',
-    category: '',
-    amount: '',
-    transaction_date: new Date().toISOString().split('T')[0],
-    description: '',
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+/**
+ * Hook for cashbook balances
+ */
+export const useCashbookBalances = (cashbookId = null) => {
+  const context = useTransactionsContext();
 
-  const handleChange = useCallback((e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  }, []);
-
-  const handleSubmit = useCallback(async (e) => {
-    e?.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    try {
-      let result;
-      if (initialData?.id) {
-        result = await transactionsAPI.updateTransaction(initialData.id, formData);
-      } else {
-        result = await transactionsAPI.createTransaction(formData);
-      }
-      
-      if (onSuccess) {
-        onSuccess(result);
-      }
-      
-      return result;
-    } catch (err) {
-      setError(err.details || 'Failed to save transaction');
-      throw err;
-    } finally {
-      setLoading(false);
+  const fetchBalances = useCallback(async (params = {}) => {
+    if (cashbookId) {
+      return await context.fetchBalancesByCashbook(cashbookId, params);
+    } else {
+      return await context.fetchCashbookBalances(params);
     }
-  }, [formData, initialData, onSuccess]);
-
-  const reset = useCallback(() => {
-    setFormData(initialData || {
-      cashbook: '',
-      type: '',
-      category: '',
-      amount: '',
-      transaction_date: new Date().toISOString().split('T')[0],
-      description: '',
-    });
-    setError(null);
-  }, [initialData]);
+  }, [context, cashbookId]);
 
   return {
-    formData,
-    loading,
-    error,
-    handleChange,
-    handleSubmit,
-    setFormData,
-    reset,
+    balances: context.balances,
+    loading: context.loading,
+    error: context.error,
+    
+    fetchBalances,
+    fetchLatestBalances: context.fetchLatestBalances,
+  };
+};
+
+/**
+ * Hook for recent transactions with auto-refresh
+ */
+export const useRecentTransactions = (days = 7, autoRefresh = false, refreshInterval = 60000) => {
+  const context = useTransactionsContext();
+
+  const fetchRecent = useCallback(async () => {
+    return await context.fetchRecentTransactions(days);
+  }, [context, days]);
+
+  // Auto-refresh logic can be added here if needed
+  // useEffect(() => {
+  //   if (autoRefresh) {
+  //     const interval = setInterval(fetchRecent, refreshInterval);
+  //     return () => clearInterval(interval);
+  //   }
+  // }, [autoRefresh, refreshInterval, fetchRecent]);
+
+  return {
+    transactions: context.transactions,
+    loading: context.loading,
+    error: context.error,
+    fetchRecent,
+  };
+};
+
+/**
+ * Hook for pending transactions
+ */
+export const usePendingTransactions = () => {
+  const context = useTransactionsContext();
+
+  return {
+    transactions: context.transactions,
+    loading: context.loading,
+    error: context.error,
+    fetchPending: context.fetchPendingTransactions,
+  };
+};
+
+/**
+ * Hook for transaction form operations
+ * Provides validation and formatting helpers
+ */
+export const useTransactionForm = () => {
+  const context = useTransactionsContext();
+
+  const validateTransaction = useCallback((data) => {
+    const errors = {};
+
+    if (!data.cashbook) errors.cashbook = 'Cashbook is required';
+    if (!data.type) errors.type = 'Transaction type is required';
+    if (!data.amount || parseFloat(data.amount) <= 0) {
+      errors.amount = 'Amount must be greater than 0';
+    }
+    if (!data.transaction_date) errors.transaction_date = 'Transaction date is required';
+    
+    if (data.value_date && data.transaction_date) {
+      if (new Date(data.value_date) < new Date(data.transaction_date)) {
+        errors.value_date = 'Value date cannot be before transaction date';
+      }
+    }
+
+    if (data.is_recurring && !data.recurring_pattern) {
+      errors.recurring_pattern = 'Recurring pattern is required for recurring transactions';
+    }
+
+    return {
+      isValid: Object.keys(errors).length === 0,
+      errors
+    };
+  }, []);
+
+  const createTransaction = useCallback(async (data) => {
+    const validation = validateTransaction(data);
+    if (!validation.isValid) {
+      throw new Error(Object.values(validation.errors).join(', '));
+    }
+    return await context.createTransaction(data);
+  }, [context, validateTransaction]);
+
+  const updateTransaction = useCallback(async (id, data) => {
+    const validation = validateTransaction(data);
+    if (!validation.isValid) {
+      throw new Error(Object.values(validation.errors).join(', '));
+    }
+    return await context.updateTransaction(id, data);
+  }, [context, validateTransaction]);
+
+  return {
+    validateTransaction,
+    createTransaction,
+    updateTransaction,
+    loading: context.loading,
+    error: context.error,
+  };
+};
+
+/**
+ * Hook for bulk operations
+ */
+export const useBulkTransactions = () => {
+  const context = useTransactionsContext();
+
+  const bulkCreate = useCallback(async (transactionsList) => {
+    return await context.bulkCreateTransactions(transactionsList);
+  }, [context]);
+
+  const bulkDelete = useCallback(async (transactionIds) => {
+    const promises = transactionIds.map(id => context.deleteTransaction(id));
+    return await Promise.all(promises);
+  }, [context]);
+
+  return {
+    bulkCreate,
+    bulkDelete,
+    loading: context.loading,
+    error: context.error,
+  };
+};
+
+/**
+ * Hook for exporting transactions
+ */
+export const useTransactionExport = () => {
+  const context = useTransactionsContext();
+
+  const exportToCSV = useCallback(async (params = {}) => {
+    const data = await context.exportTransactions(params);
+    
+    if (!data.data || data.data.length === 0) {
+      throw new Error('No data to export');
+    }
+
+    // Convert to CSV
+    const headers = Object.keys(data.data[0]).join(',');
+    const rows = data.data.map(row => 
+      Object.values(row).map(val => 
+        typeof val === 'string' && val.includes(',') ? `"${val}"` : val
+      ).join(',')
+    );
+    
+    const csv = [headers, ...rows].join('\n');
+    
+    // Create download
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+    
+    return csv;
+  }, [context]);
+
+  const exportToJSON = useCallback(async (params = {}) => {
+    const data = await context.exportTransactions(params);
+    
+    const json = JSON.stringify(data.data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `transactions_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+    
+    return json;
+  }, [context]);
+
+  return {
+    exportToCSV,
+    exportToJSON,
+    loading: context.loading,
+    error: context.error,
   };
 };
