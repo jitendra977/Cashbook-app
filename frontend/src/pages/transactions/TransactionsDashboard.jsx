@@ -1,18 +1,23 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Container, Grid, Paper, Tabs, Tab, Typography, Button, Stack,
   Chip, IconButton, Drawer, useTheme, useMediaQuery, Card, CardContent,
   Divider, Tooltip, Badge, SpeedDial, SpeedDialAction, SpeedDialIcon,
-  Breadcrumbs, Link, Alert, Snackbar, Fade, Slide, Avatar, CircularProgress
+  Breadcrumbs, Link, Alert, Snackbar, Fade, Avatar, CircularProgress,
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  Menu, MenuItem, ListItemIcon, ListItemText, Zoom
 } from '@mui/material';
 import {
   Dashboard, Receipt, Analytics, Add, Refresh, FilterList,
   TrendingUp, TrendingDown, AttachMoney, CalendarToday, Store,
   AccountBalance, ArrowBack, Settings, FileDownload, Share,
-  Visibility, Edit, DateRange, Category
+  Visibility, Edit, DateRange, Category, MoreVert,
+  ImportExport, PictureAsPdf, GridOn, BarChart,
+  Download, Upload, QrCode2, Search, Sort
 } from '@mui/icons-material';
 
+// Custom Components
 import TransactionList from '../../components/transactions/TransactionList';
 import TransactionFilters from '../../components/transactions/TransactionFilters';
 import MonthlyChart from '../../components/transactions/MonthlyChart';
@@ -20,23 +25,52 @@ import CategoryChart from '../../components/transactions/CategoryChart';
 import TransactionForm from '../../components/transactions/TransactionForm';
 import { useTransactionsContext } from '../../context/TransactionsContext';
 
-// Enhanced Summary Card Component
-const SummaryCard = ({ title, value, subtitle, icon: Icon, color, trend, loading }) => {
+// Enhanced Summary Card with Skeleton Loading
+const SummaryCard = ({ 
+  title, 
+  value, 
+  subtitle, 
+  icon: Icon, 
+  color = 'primary', 
+  trend, 
+  loading = false,
+  onClick 
+}) => {
   const theme = useTheme();
   
   return (
-    <Card elevation={2} sx={{ height: '100%', position: 'relative', overflow: 'visible' }}>
-      <CardContent>
+    <Card 
+      elevation={2} 
+      sx={{ 
+        height: '100%', 
+        position: 'relative', 
+        overflow: 'visible',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'all 0.2s ease-in-out',
+        '&:hover': onClick ? {
+          transform: 'translateY(-2px)',
+          boxShadow: 4,
+          border: `1px solid ${theme.palette[color].main}20`
+        } : {}
+      }}
+      onClick={onClick}
+    >
+      <CardContent sx={{ p: 3 }}>
         <Stack spacing={2}>
           <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-            <Box>
+            <Box sx={{ flex: 1 }}>
               <Typography variant="body2" color="text.secondary" gutterBottom>
                 {title}
               </Typography>
               {loading ? (
-                <CircularProgress size={24} />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CircularProgress size={20} />
+                  <Typography variant="h4" fontWeight="bold" color="text.disabled">
+                    Loading...
+                  </Typography>
+                </Box>
               ) : (
-                <Typography variant="h4" fontWeight="bold" color={color}>
+                <Typography variant="h4" fontWeight="bold" color={`${color}.main`}>
                   {value}
                 </Typography>
               )}
@@ -51,7 +85,8 @@ const SummaryCard = ({ title, value, subtitle, icon: Icon, color, trend, loading
                 bgcolor: `${color}.lighter`,
                 color: `${color}.main`,
                 width: 56,
-                height: 56
+                height: 56,
+                transition: 'all 0.2s ease-in-out'
               }}
             >
               <Icon fontSize="large" />
@@ -83,53 +118,97 @@ const SummaryCard = ({ title, value, subtitle, icon: Icon, color, trend, loading
   );
 };
 
-// Quick Date Range Selector
-const QuickDateSelector = ({ dateRange, onChange }) => {
-  const ranges = useMemo(() => [
-    {
-      label: 'Today',
-      start: new Date().toISOString().split('T')[0],
-      end: new Date().toISOString().split('T')[0]
-    },
-    {
-      label: '7 Days',
-      start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      end: new Date().toISOString().split('T')[0]
-    },
-    {
-      label: '30 Days',
-      start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      end: new Date().toISOString().split('T')[0]
-    },
-    {
-      label: 'This Month',
-      start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-      end: new Date().toISOString().split('T')[0]
-    },
-    {
-      label: 'Last Month',
-      start: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().split('T')[0],
-      end: new Date(new Date().getFullYear(), new Date().getMonth(), 0).toISOString().split('T')[0]
-    }
-  ], []);
+// Quick Actions Menu
+const QuickActionsMenu = ({ anchorEl, open, onClose, onAction }) => {
+  const actions = [
+    { icon: <Download />, label: 'Import Transactions', value: 'import' },
+    { icon: <Upload />, label: 'Export as CSV', value: 'export-csv' },
+    { icon: <PictureAsPdf />, label: 'Export as PDF', value: 'export-pdf' },
+    { icon: <QrCode2 />, label: 'Scan Receipt', value: 'scan-receipt' },
+    { icon: <BarChart />, label: 'Advanced Analytics', value: 'analytics' },
+  ];
 
-  const isActive = (range) => {
-    return dateRange.start_date === range.start && dateRange.end_date === range.end;
+  return (
+    <Menu
+      anchorEl={anchorEl}
+      open={open}
+      onClose={onClose}
+      transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+      anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+    >
+      {actions.map((action) => (
+        <MenuItem
+          key={action.value}
+          onClick={() => {
+            onAction(action.value);
+            onClose();
+          }}
+          sx={{ py: 1.5 }}
+        >
+          <ListItemIcon sx={{ minWidth: 40 }}>
+            {action.icon}
+          </ListItemIcon>
+          <ListItemText primary={action.label} />
+        </MenuItem>
+      ))}
+    </Menu>
+  );
+};
+
+// Enhanced Search and Filter Bar
+const SearchFilterBar = ({ 
+  onSearch, 
+  onFilterToggle, 
+  onSort, 
+  filtersActive,
+  searchQuery,
+  onQuickDateChange 
+}) => {
+  const [search, setSearch] = useState(searchQuery || '');
+  
+  const handleSearchChange = (event) => {
+    const value = event.target.value;
+    setSearch(value);
+    // Debounced search
+    setTimeout(() => onSearch(value), 300);
   };
 
   return (
-    <Stack direction="row" spacing={1} flexWrap="wrap">
-      {ranges.map((range) => (
-        <Chip
-          key={range.label}
-          label={range.label}
-          onClick={() => onChange({ start_date: range.start, end_date: range.end })}
-          color={isActive(range) ? 'primary' : 'default'}
-          variant={isActive(range) ? 'filled' : 'outlined'}
-          icon={<CalendarToday />}
+    <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
+        {/* Search */}
+        <TextField
+          fullWidth
+          variant="outlined"
+          placeholder="Search transactions..."
+          value={search}
+          onChange={handleSearchChange}
+          InputProps={{
+            startAdornment: <Search sx={{ color: 'text.secondary', mr: 1 }} />
+          }}
+          sx={{ maxWidth: 400 }}
         />
-      ))}
-    </Stack>
+        
+        {/* Quick Actions */}
+        <Stack direction="row" spacing={1} flexWrap="wrap" flexGrow={1}>
+          <Button
+            variant={filtersActive ? "contained" : "outlined"}
+            startIcon={<FilterList />}
+            onClick={onFilterToggle}
+            color={filtersActive ? "primary" : "inherit"}
+          >
+            Filters
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<Sort />}
+            onClick={onSort}
+          >
+            Sort
+          </Button>
+        </Stack>
+      </Stack>
+    </Paper>
   );
 };
 
@@ -138,6 +217,7 @@ const TransactionsDashboard = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
 
   const {
     transactions,
@@ -164,66 +244,48 @@ const TransactionsDashboard = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [storeInfo, setStoreInfo] = useState(null);
   const [cashbookInfo, setCashbookInfo] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [quickActionsAnchor, setQuickActionsAnchor] = useState(null);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
-  // Fetch data
-  useEffect(() => {
-    const fetchData = async () => {
-      const params = {
-        ...filters,
-        start_date: dateRange.start_date,
-        end_date: dateRange.end_date,
-      };
-      
-      try {
-        if (storeId && cashbookId) {
-          await fetchTransactionsByCashbook(cashbookId, params);
-        } else if (storeId) {
-          await fetchTransactionsByStore(storeId, params);
-        } else if (cashbookId) {
-          await fetchTransactionsByCashbook(cashbookId, params);
-        } else {
-          await fetchTransactions(params);
-        }
-        
-        await fetchTransactionSummary(params);
-
-        // Extract store and cashbook info from first transaction
-        if (transactions && transactions.length > 0) {
-          const firstTx = transactions[0];
-          if (firstTx.store_name) {
-            setStoreInfo({ id: storeId, name: firstTx.store_name });
-          }
-          if (firstTx.cashbook_name) {
-            setCashbookInfo({ id: cashbookId, name: firstTx.cashbook_name });
-          }
-        }
-      } catch (err) {
-        console.error('Failed to fetch transactions:', err);
-        showSnackbar('Failed to load transactions', 'error');
-      }
+  // Memoized data calculations
+  const summaryStats = useMemo(() => {
+    const txArray = Array.isArray(transactions) ? transactions : [];
+    const total = txArray.reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
+    const income = txArray.filter(tx => tx.type_name === 'Income').reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
+    const expense = txArray.filter(tx => tx.type_name === 'Expense').reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
+    const completed = txArray.filter(tx => tx.status === 'completed').length;
+    const pending = txArray.filter(tx => tx.status === 'pending').length;
+    
+    return {
+      total,
+      income,
+      expense,
+      balance: income - expense,
+      count: txArray.length,
+      completed,
+      pending
     };
+  }, [transactions]);
 
-    fetchData();
-  }, [storeId, cashbookId, dateRange, filters]);
+  // Filtered transactions based on search
+  const filteredTransactions = useMemo(() => {
+    if (!searchQuery) return transactions;
+    
+    return transactions.filter(tx => 
+      tx.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tx.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tx.amount?.toString().includes(searchQuery)
+    );
+  }, [transactions, searchQuery]);
 
-  // Handlers
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
-  };
-
-  const handleDateRangeChange = (newDateRange) => {
-    setDateRange(newDateRange);
-  };
-
-  const handleFilterChange = (newFilters) => {
-    setFilters(newFilters);
-  };
-
-  const handleRefresh = async () => {
+  // Fetch data with error handling
+  const fetchData = useCallback(async () => {
     const params = {
       ...filters,
       start_date: dateRange.start_date,
       end_date: dateRange.end_date,
+      search: searchQuery,
     };
     
     try {
@@ -231,16 +293,56 @@ const TransactionsDashboard = () => {
         await fetchTransactionsByCashbook(cashbookId, params);
       } else if (storeId) {
         await fetchTransactionsByStore(storeId, params);
+      } else if (cashbookId) {
+        await fetchTransactionsByCashbook(cashbookId, params);
       } else {
         await fetchTransactions(params);
       }
       
       await fetchTransactionSummary(params);
-      showSnackbar('Data refreshed successfully', 'success');
+
+      // Extract store and cashbook info from first transaction
+      if (transactions && transactions.length > 0) {
+        const firstTx = transactions[0];
+        if (firstTx.store_name) {
+          setStoreInfo({ id: storeId, name: firstTx.store_name });
+        }
+        if (firstTx.cashbook_name) {
+          setCashbookInfo({ id: cashbookId, name: firstTx.cashbook_name });
+        }
+      }
     } catch (err) {
-      showSnackbar('Failed to refresh data', 'error');
+      console.error('Failed to fetch transactions:', err);
+      showSnackbar('Failed to load transactions', 'error');
     }
+  }, [storeId, cashbookId, dateRange, filters, searchQuery]);
+
+  // Optimized useEffect with dependencies
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Handlers
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
   };
+
+  const handleDateRangeChange = useCallback((newDateRange) => {
+    setDateRange(newDateRange);
+  }, []);
+
+  const handleFilterChange = useCallback((newFilters) => {
+    setFilters(newFilters);
+  }, []);
+
+  const handleRefresh = async () => {
+    await fetchData();
+    showSnackbar('Data refreshed successfully', 'success');
+  };
+
+  const handleSearch = useCallback((query) => {
+    setSearchQuery(query);
+  }, []);
 
   const handleTransactionClick = (transaction) => {
     if (storeId && cashbookId) {
@@ -282,8 +384,20 @@ const TransactionsDashboard = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
-  const handleExport = () => {
-    showSnackbar('Export functionality coming soon', 'info');
+  const handleQuickAction = (action) => {
+    switch (action) {
+      case 'export-csv':
+        setExportDialogOpen(true);
+        break;
+      case 'import':
+        showSnackbar('Import functionality coming soon', 'info');
+        break;
+      case 'scan-receipt':
+        showSnackbar('Receipt scanning coming soon', 'info');
+        break;
+      default:
+        showSnackbar(`${action} functionality coming soon`, 'info');
+    }
   };
 
   // Context info for breadcrumbs
@@ -325,29 +439,12 @@ const TransactionsDashboard = () => {
     return crumbs;
   };
 
-  // Calculate summary stats
-  const summaryStats = useMemo(() => {
-    const txArray = Array.isArray(transactions) ? transactions : [];
-    const total = txArray.reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
-    const income = txArray.filter(tx => tx.type_name === 'Income').reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
-    const expense = txArray.filter(tx => tx.type_name === 'Expense').reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
-    const completed = txArray.filter(tx => tx.status === 'completed').length;
-    
-    return {
-      total,
-      income,
-      expense,
-      balance: income - expense,
-      count: txArray.length,
-      completed
-    };
-  }, [transactions]);
-
   // Speed dial actions
   const speedDialActions = [
     { icon: <Add />, name: 'New Transaction', action: handleNewTransaction },
-    { icon: <FileDownload />, name: 'Export', action: handleExport },
+    { icon: <FileDownload />, name: 'Export', action: () => setExportDialogOpen(true) },
     { icon: <Refresh />, name: 'Refresh', action: handleRefresh },
+    { icon: <FilterList />, name: 'Filters', action: () => setShowFilters(true) },
   ];
 
   if (loading && (!transactions || transactions.length === 0)) {
@@ -366,30 +463,54 @@ const TransactionsDashboard = () => {
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       {/* Breadcrumbs */}
-      <Breadcrumbs sx={{ mb: 2 }}>
-        {getBreadcrumbs().map((crumb, index) => (
-          crumb.path ? (
+      <Breadcrumbs 
+        separator="›" 
+        sx={{ mb: 2 }}
+        aria-label="breadcrumb"
+      >
+        {getBreadcrumbs().map((crumb, index) => {
+          const isLast = index === getBreadcrumbs().length - 1;
+          
+          return crumb.path && !isLast ? (
             <Link
               key={index}
               underline="hover"
               color="inherit"
-              href={crumb.path}
-              onClick={(e) => {
-                e.preventDefault();
-                navigate(crumb.path);
+              component="button"
+              onClick={() => navigate(crumb.path)}
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 0.5,
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+                font: 'inherit',
+                '&:hover': {
+                  color: 'primary.main'
+                }
               }}
-              sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
             >
               {crumb.icon}
               {crumb.label}
             </Link>
           ) : (
-            <Typography key={index} color="text.primary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Typography 
+              key={index} 
+              color={isLast ? 'text.primary' : 'text.secondary'}
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 0.5,
+                fontWeight: isLast ? 600 : 400
+              }}
+            >
               {crumb.icon}
               {crumb.label}
             </Typography>
-          )
-        ))}
+          );
+        })}
       </Breadcrumbs>
 
       {/* Header */}
@@ -399,7 +520,26 @@ const TransactionsDashboard = () => {
             <Typography variant="h3" fontWeight="bold">
               Transactions Dashboard
             </Typography>
-            
+            {(storeInfo || cashbookInfo) && (
+              <Stack direction="row" spacing={1}>
+                {storeInfo && (
+                  <Chip
+                    icon={<Store />}
+                    label={storeInfo.name}
+                    color="primary"
+                    variant="outlined"
+                  />
+                )}
+                {cashbookInfo && (
+                  <Chip
+                    icon={<AccountBalance />}
+                    label={cashbookInfo.name}
+                    color="secondary"
+                    variant="outlined"
+                  />
+                )}
+              </Stack>
+            )}
           </Stack>
           <Typography variant="body1" color="text.secondary">
             Manage and analyze your financial transactions
@@ -427,6 +567,13 @@ const TransactionsDashboard = () => {
               Refresh
             </Button>
             <Button
+              variant="outlined"
+              endIcon={<MoreVert />}
+              onClick={(e) => setQuickActionsAnchor(e.currentTarget)}
+            >
+              More
+            </Button>
+            <Button
               variant="contained"
               startIcon={<Add />}
               onClick={handleNewTransaction}
@@ -445,108 +592,15 @@ const TransactionsDashboard = () => {
         </Alert>
       )}
 
-      {/* Context Information Card */}
-      {(storeInfo || cashbookInfo) && (
-        <Paper elevation={2} sx={{ p: 2.5, mb: 3, bgcolor: 'primary.lighter' }}>
-          <Stack direction="row" spacing={3} alignItems="center">
-            <Stack direction="row" spacing={2} flexGrow={1} flexWrap="wrap">
-              {storeInfo && (
-                <Card sx={{ minWidth: 200 }}>
-                  <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                    <Stack direction="row" alignItems="center" spacing={1.5}>
-                      <Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
-                        <Store />
-                      </Avatar>
-                      <Box>
-                        <Typography variant="caption" color="text.secondary">
-                          Store
-                        </Typography>
-                        <Typography variant="body1" fontWeight="bold">
-                          {storeInfo.name}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              )}
-              
-              {cashbookInfo && (
-                <Card sx={{ minWidth: 200 }}>
-                  <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                    <Stack direction="row" alignItems="center" spacing={1.5}>
-                      <Avatar sx={{ bgcolor: 'secondary.main', width: 40, height: 40 }}>
-                        <AccountBalance />
-                      </Avatar>
-                      <Box>
-                        <Typography variant="caption" color="text.secondary">
-                          Cashbook
-                        </Typography>
-                        <Typography variant="body1" fontWeight="bold">
-                          {cashbookInfo.name}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              )}
-
-              <Card sx={{ minWidth: 200 }}>
-                <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                  <Stack direction="row" alignItems="center" spacing={1.5}>
-                    <Avatar sx={{ bgcolor: 'info.main', width: 40, height: 40 }}>
-                      <CalendarToday />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">
-                        Period
-                      </Typography>
-                      <Typography variant="body2" fontWeight="bold">
-                        {new Date(dateRange.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        {' - '}
-                        {new Date(dateRange.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Stack>
-          </Stack>
-        </Paper>
-      )}
-
-      {/* Date Range Selector */}
-      <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
-          <DateRange color="primary" />
-          <QuickDateSelector dateRange={dateRange} onChange={handleDateRangeChange} />
-          <Divider orientation="vertical" flexItem />
-          <Stack direction="row" spacing={1} flexGrow={1}>
-            <input
-              type="date"
-              value={dateRange.start_date}
-              onChange={(e) => handleDateRangeChange({ ...dateRange, start_date: e.target.value })}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '4px',
-                border: `1px solid ${theme.palette.divider}`,
-                fontSize: '14px'
-              }}
-            />
-            <Typography alignSelf="center">to</Typography>
-            <input
-              type="date"
-              value={dateRange.end_date}
-              onChange={(e) => handleDateRangeChange({ ...dateRange, end_date: e.target.value })}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '4px',
-                border: `1px solid ${theme.palette.divider}`,
-                fontSize: '14px'
-              }}
-            />
-          </Stack>
-        </Stack>
-      </Paper>
+      {/* Search and Filter Bar */}
+      <SearchFilterBar
+        onSearch={handleSearch}
+        onFilterToggle={() => setShowFilters(!showFilters)}
+        onSort={() => showSnackbar('Sort functionality coming soon', 'info')}
+        filtersActive={Object.keys(filters).length > 0}
+        searchQuery={searchQuery}
+        onQuickDateChange={handleDateRangeChange}
+      />
 
       {/* Summary Cards */}
       <Grid container spacing={3} mb={4}>
@@ -559,6 +613,7 @@ const TransactionsDashboard = () => {
             color="primary"
             trend={{ value: 12.5, period: 'last month' }}
             loading={loading}
+            onClick={() => setActiveTab(0)}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
@@ -569,6 +624,7 @@ const TransactionsDashboard = () => {
             icon={TrendingUp}
             color="success"
             loading={loading}
+            onClick={() => setFilters({ type: 'income' })}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
@@ -579,13 +635,14 @@ const TransactionsDashboard = () => {
             icon={TrendingDown}
             color="error"
             loading={loading}
+            onClick={() => setFilters({ type: 'expense' })}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <SummaryCard
             title="Completed"
             value={summaryStats.completed}
-            subtitle={`of ${summaryStats.count} total`}
+            subtitle={`${summaryStats.pending} pending`}
             icon={Receipt}
             color="info"
             loading={loading}
@@ -605,7 +662,7 @@ const TransactionsDashboard = () => {
           <Tab 
             icon={<Receipt />} 
             label={
-              <Badge badgeContent={summaryStats.count} color="primary" max={999}>
+              <Badge badgeContent={filteredTransactions.length} color="primary" max={999}>
                 Transactions
               </Badge>
             }
@@ -619,7 +676,28 @@ const TransactionsDashboard = () => {
           {activeTab === 0 && (
             <Fade in={activeTab === 0}>
               <Stack spacing={3}>
-                
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={8}>
+                    <MonthlyChart
+                      storeId={storeId}
+                      cashbookId={cashbookId}
+                      dateRange={dateRange}
+                      detailed={false}
+                      loading={loading}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <CategoryChart
+                      cashbookId={cashbookId}
+                      dateRange={dateRange}
+                      data={[]}
+                      detailed={false}
+                      loading={loading}
+                      chartType="pie"
+                      showStats={false}
+                    />
+                  </Grid>
+                </Grid>
 
                 <Paper elevation={1} sx={{ p: 2 }}>
                   <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
@@ -633,7 +711,7 @@ const TransactionsDashboard = () => {
                     </Button>
                   </Stack>
                   <TransactionList
-                    transactions={Array.isArray(transactions) ? transactions.slice(0, 5) : []}
+                    transactions={filteredTransactions.slice(0, 5)}
                     showPagination={false}
                     showSummary={false}
                     showFilters={false}
@@ -654,7 +732,7 @@ const TransactionsDashboard = () => {
             <Fade in={activeTab === 1}>
               <Box>
                 <TransactionList
-                  transactions={Array.isArray(transactions) ? transactions : []}
+                  transactions={filteredTransactions}
                   showPagination={true}
                   showSummary={true}
                   showFilters={true}
@@ -663,7 +741,7 @@ const TransactionsDashboard = () => {
                   onTransactionClick={handleTransactionClick}
                   onEdit={handleEditTransaction}
                   onRefresh={handleRefresh}
-                  onExport={handleExport}
+                  onExport={() => setExportDialogOpen(true)}
                   loading={loading}
                   error={error}
                   enableSelection={true}
@@ -731,8 +809,8 @@ const TransactionsDashboard = () => {
           </Stack>
           <Divider />
           <TransactionFilters
-            onFilterChange={(filters) => {
-              handleFilterChange(filters);
+            onFilterChange={(newFilters) => {
+              handleFilterChange(newFilters);
               setShowFilters(false);
             }}
             showAdvanced={true}
@@ -768,12 +846,45 @@ const TransactionsDashboard = () => {
         </Stack>
       </Drawer>
 
+      {/* Export Dialog */}
+      <Dialog open={exportDialogOpen} onClose={() => setExportDialogOpen(false)}>
+        <DialogTitle>Export Transactions</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" mb={2}>
+            Choose export format and options for your transactions data.
+          </Typography>
+          <Stack spacing={2}>
+            <Button variant="outlined" startIcon={<GridOn />} fullWidth>
+              Export as CSV
+            </Button>
+            <Button variant="outlined" startIcon={<PictureAsPdf />} fullWidth>
+              Export as PDF Report
+            </Button>
+            <Button variant="outlined" startIcon={<BarChart />} fullWidth>
+              Export for Excel
+            </Button>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setExportDialogOpen(false)}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Quick Actions Menu */}
+      <QuickActionsMenu
+        anchorEl={quickActionsAnchor}
+        open={Boolean(quickActionsAnchor)}
+        onClose={() => setQuickActionsAnchor(null)}
+        onAction={handleQuickAction}
+      />
+
       {/* Mobile Speed Dial */}
       {isMobile && (
         <SpeedDial
           ariaLabel="Quick actions"
           sx={{ position: 'fixed', bottom: 16, right: 16 }}
           icon={<SpeedDialIcon />}
+          TransitionComponent={Zoom}
         >
           {speedDialActions.map((action) => (
             <SpeedDialAction

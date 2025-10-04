@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -20,18 +20,31 @@ import {
   Settings,
   Logout,
   Person,
+  Store,
 } from '@mui/icons-material';
 import { usersAPI } from '../../api/users';
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../context/AuthContext';
+import { useStore } from '../../context/StoreContext';
+import { storesAPI } from '../../api/stores';
+
 const Navbar = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [storeName, setStoreName] = useState('My App');
   const { logout } = useAuth();
+  const { currentStore } = useStore();
+  const { storeId } = useParams();
   const navigate = useNavigate();
+
   useEffect(() => {
     fetchUserProfile();
   }, []);
+
+  useEffect(() => {
+    // Fetch store name when storeId changes or from context
+    fetchStoreName();
+  }, [storeId, currentStore]);
 
   const fetchUserProfile = async () => {
     try {
@@ -44,17 +57,36 @@ const Navbar = () => {
     }
   };
 
+  const fetchStoreName = async () => {
+    try {
+      // If we have storeId from URL params, fetch store details
+      if (storeId) {
+        const store = await storesAPI.getStore(storeId); // You'll need to create this API method
+        setStoreName(store.name);
+      } 
+      // If we have current store from context, use that
+      else if (currentStore) {
+        setStoreName(currentStore.name);
+      }
+      // Default fallback
+      else {
+        setStoreName('My App');
+      }
+    } catch (error) {
+      console.error('Failed to fetch store name:', error);
+      setStoreName('My App'); // Fallback to default
+    }
+  };
+
   // Function to get full image URL
   const getFullImageUrl = (imagePath) => {
     if (!imagePath) return null;
     
-    // If it's already a full URL, return as is
     if (imagePath.startsWith('http')) {
       return imagePath;
     }
     
-    // Prepend your API base URL to the relative path
-    const baseUrl = 'http://localhost:8000'; // Change this to your actual base URL
+    const baseUrl = 'http://localhost:8000';
     return `${baseUrl}${imagePath}`;
   };
 
@@ -66,12 +98,11 @@ const Navbar = () => {
     setAnchorEl(null);
   };
 
-  
+  const handleProfile = () => {
+    handleMenuClose();
+    navigate('/profile');
+  };
 
-const handleProfile = () => {
-  handleMenuClose(); // close dropdown menu if any
-  navigate('/profile'); // navigate to profile page
-};
   const handleSettings = () => {
     handleMenuClose();
     console.log('Settings clicked');
@@ -103,8 +134,9 @@ const handleProfile = () => {
     <AppBar position="static">
       <Container maxWidth="lg">
         <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
-            My App
+          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Store fontSize="small" />
+            {storeName}
           </Typography>
 
           <Box sx={{ display: 'flex', gap: 1, mr: 2 }}>
@@ -122,7 +154,7 @@ const handleProfile = () => {
             >
               <Avatar 
                 sx={{ width: 32, height: 32 }}
-                src={getFullImageUrl(userProfile?.profile_image)} // Use full URL
+                src={getFullImageUrl(userProfile?.profile_image)}
                 alt={getUserDisplayName()}
               >
                 {getUserInitial()}
@@ -139,12 +171,11 @@ const handleProfile = () => {
               sx: { minWidth: 200, mt: 1.5 }
             }}
           >
-            {/* User Info with full image URL */}
             <MenuItem onClick={handleProfile}>
               <ListItemIcon>
                 <Avatar 
                   sx={{ width: 40, height: 40 }}
-                  src={getFullImageUrl(userProfile?.profile_image)} // Use full URL
+                  src={getFullImageUrl(userProfile?.profile_image)}
                 >
                   {getUserInitial()}
                 </Avatar>
