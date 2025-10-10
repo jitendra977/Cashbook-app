@@ -4,15 +4,23 @@ from accounts.models import User
 
 class Store(models.Model):
     name = models.CharField(max_length=255, unique=True)
-    address = models.CharField(max_length=255, blank=True, null=True)  # ✅ Added
-    contact_number = models.CharField(max_length=20, blank=True, null=True)  # ✅ Added
-    is_active = models.BooleanField(default=True)  # ✅ Added
+    address = models.CharField(max_length=255, blank=True, null=True)
+    contact_number = models.CharField(max_length=20, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+
+    store_owner = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="owned_stores"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
-
 
 class StoreUser(models.Model):
     ROLE_CHOICES = (
@@ -31,6 +39,13 @@ class StoreUser(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.role} @ {self.store.name}"
+
+    # ✅ Auto-set store owner when role='owner'
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.role == 'owner':
+            self.store.store_owner = self.user
+            self.store.save()
 
 
 class Cashbook(models.Model):

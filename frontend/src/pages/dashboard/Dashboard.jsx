@@ -474,6 +474,7 @@ const Dashboard = () => {
                     <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
                       <TableCell><strong>User</strong></TableCell>
                       <TableCell><strong>Email</strong></TableCell>
+                      <TableCell><strong>Address</strong></TableCell>
                       <TableCell><strong>Status</strong></TableCell>
                       <TableCell><strong>Role</strong></TableCell>
                       <TableCell><strong>Actions</strong></TableCell>
@@ -509,6 +510,10 @@ const Dashboard = () => {
                         <TableCell>
                           <Typography variant="body2">
                             {user.email}
+                          </Typography>
+                        </TableCell><TableCell>
+                          <Typography variant="body2">
+                            {user.address}
                           </Typography>
                         </TableCell>
                         <TableCell>

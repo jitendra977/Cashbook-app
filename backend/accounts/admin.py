@@ -8,7 +8,7 @@ from django.utils.html import format_html
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     # Fields displayed in admin list
-    list_display = ('id', 'username', 'email', 'first_name', 'last_name', 'phone_number', 'is_staff', 'is_active','is_verified','last_login')
+    list_display = ('id', 'username', 'address', 'email', 'first_name', 'last_name', 'phone_number', 'is_staff', 'is_active','is_verified','last_login')
     list_filter = ('is_staff', 'is_superuser', 'is_active', 'groups')
     search_fields = ('username', 'email', 'first_name', 'last_name')
     ordering = ('id',)
@@ -16,7 +16,7 @@ class UserAdmin(BaseUserAdmin):
     # Fieldsets for detail view
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
-        (_('Personal info'), {'fields': ('first_name', 'last_name', 'email', 'phone_number', 'profile_image')}),
+        (_('Personal info'), {'fields': ('first_name', 'last_name', 'email', 'address', 'phone_number', 'profile_image')}),
         (_('Permissions'), {'fields': ('is_active', 'is_verified','is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         (_('Important dates'), {'fields': ('last_login', 'date_joined')}),
     )
@@ -25,12 +25,12 @@ class UserAdmin(BaseUserAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('username', 'email', 'password1', 'password2', 'first_name', 'last_name', 'phone_number', 'profile_image', 'is_staff', 'is_active')}
+            'fields': ('username', 'email', 'address', 'password1', 'password2', 'first_name', 'last_name', 'phone_number', 'profile_image', 'is_staff', 'is_active')}
         ),
     )
     
 class UserAdmin(BaseUserAdmin):
-    list_display = ('id', 'username', 'email', 'profile_image_tag', 'is_staff', 'is_active','is_verified')
+    list_display = ('id', 'username', 'email', 'address', 'profile_image_tag', 'is_staff', 'is_active','is_verified')
     
     def profile_image_tag(self, obj):
         if obj.profile_image:

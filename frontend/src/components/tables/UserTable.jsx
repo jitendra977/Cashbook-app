@@ -173,6 +173,7 @@ const UserTable = ({
             <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
               <TableCell><strong>User</strong></TableCell>
               <TableCell><strong>Email</strong></TableCell>
+              <TableCell><strong>Address</strong></TableCell>
               <TableCell><strong>Status</strong></TableCell>
               <TableCell><strong>Role</strong></TableCell>
               <TableCell><strong>Actions</strong></TableCell>
@@ -221,7 +222,10 @@ const UserTable = ({
                   <TableCell>
                     <Typography variant="body2">{user.email}</Typography>
                   </TableCell>
-
+                  {/* Address */}
+                  <TableCell>
+                    <Typography variant="body2">{user.address}</Typography>
+                  </TableCell>
                   {/* STATUS */}
                   <TableCell>
                     <Box display="flex" gap={1}>

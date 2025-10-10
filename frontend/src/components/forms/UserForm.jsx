@@ -24,6 +24,7 @@ const UserForm = ({ open, onClose, onSubmit, user = null, loading = false, error
   const [formData, setFormData] = useState({
     username: '',
     email: '',
+    address: '',
     first_name: '',
     last_name: '',
     phone_number: '',
@@ -46,6 +47,7 @@ const UserForm = ({ open, onClose, onSubmit, user = null, loading = false, error
         first_name: user.first_name || '',
         last_name: user.last_name || '',
         phone_number: user.phone_number || '',
+        address: user.address,
         password: '', // Always empty for security
         password_confirm: '', // Always empty for security
         profile_image: null,
@@ -63,6 +65,7 @@ const UserForm = ({ open, onClose, onSubmit, user = null, loading = false, error
       setFormData({
         username: '',
         email: '',
+        address: '',
         first_name: '',
         last_name: '',
         phone_number: '',
@@ -80,11 +83,11 @@ const UserForm = ({ open, onClose, onSubmit, user = null, loading = false, error
 
   const handleChange = (e) => {
     const { name, value, files, type, checked } = e.target;
-    
+
     if (name === 'profile_image') {
       const file = files[0];
       setFormData({ ...formData, profile_image: file });
-      
+
       // Create image preview
       if (file) {
         const reader = new FileReader();
@@ -102,23 +105,23 @@ const UserForm = ({ open, onClose, onSubmit, user = null, loading = false, error
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     // Validation
     if (!user && (!formData.password || !formData.password_confirm)) {
       return;
     }
-    
+
     if (formData.password !== formData.password_confirm) {
       return;
     }
 
     // Prepare data
     const data = new FormData();
-    
+
     // Add all form fields
     Object.keys(formData).forEach((key) => {
       if (key === 'password_confirm') return; // Don't send confirm password
-      
+
       if (key === 'profile_image') {
         // Only add image if a new file was selected
         if (formData[key] instanceof File) {
@@ -165,7 +168,7 @@ const UserForm = ({ open, onClose, onSubmit, user = null, loading = false, error
       <form onSubmit={handleSubmit}>
         <DialogContent>
           <Grid container spacing={3}>
-            
+
             {/* Profile Image Section */}
             <Grid item xs={12}>
               <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
@@ -175,7 +178,7 @@ const UserForm = ({ open, onClose, onSubmit, user = null, loading = false, error
                 >
                   {formData.username?.charAt(0).toUpperCase()}
                 </Avatar>
-                
+
                 <Box display="flex" gap={1}>
                   <Button
                     variant="outlined"
@@ -192,7 +195,7 @@ const UserForm = ({ open, onClose, onSubmit, user = null, loading = false, error
                       hidden
                     />
                   </Button>
-                  
+
                   {imagePreview && (
                     <Button
                       variant="outlined"
@@ -204,7 +207,7 @@ const UserForm = ({ open, onClose, onSubmit, user = null, loading = false, error
                     </Button>
                   )}
                 </Box>
-                
+
                 {errors.profile_image && (
                   <Alert severity="error" sx={{ width: '100%' }}>
                     {Array.isArray(errors.profile_image) ? errors.profile_image[0] : errors.profile_image}
@@ -280,7 +283,17 @@ const UserForm = ({ open, onClose, onSubmit, user = null, loading = false, error
                 helperText={Array.isArray(errors.phone_number) ? errors.phone_number[0] : errors.phone_number}
               />
             </Grid>
-
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Address"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                error={!!errors.address}
+                helperText={Array.isArray(errors.address) ? errors.address[0] : errors.address}
+              />
+            </Grid>
             {/* Password Section */}
             <Grid item xs={12}>
               <Divider />
@@ -326,9 +339,9 @@ const UserForm = ({ open, onClose, onSubmit, user = null, loading = false, error
                     required={!user}
                     error={!!errors.password_confirm || (formData.password !== formData.password_confirm && formData.password_confirm !== '')}
                     helperText={
-                      Array.isArray(errors.password_confirm) ? errors.password_confirm[0] : 
-                      errors.password_confirm || 
-                      (formData.password !== formData.password_confirm && formData.password_confirm !== '' ? 'Passwords do not match' : '')
+                      Array.isArray(errors.password_confirm) ? errors.password_confirm[0] :
+                        errors.password_confirm ||
+                        (formData.password !== formData.password_confirm && formData.password_confirm !== '' ? 'Passwords do not match' : '')
                     }
                   />
                 </Grid>

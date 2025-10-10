@@ -42,6 +42,7 @@ const AddUser = () => {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
+    address:'',
     first_name: '',
     last_name: '',
     phone_number: '',
@@ -313,6 +314,10 @@ const AddUser = () => {
                 <Grid item xs={12} sm={6}>
                   <Typography variant="body2" color="textSecondary">Email:</Typography>
                   <Typography variant="body1" fontWeight="medium">{createdUser.email}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="textSecondary">Address:</Typography>
+                  <Typography variant="body1" fontWeight="medium">{createdUser.address}</Typography>
                 </Grid>
               </Grid>
 

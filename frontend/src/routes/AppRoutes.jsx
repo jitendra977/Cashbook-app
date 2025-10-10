@@ -17,6 +17,7 @@ import CashbookList from '../pages/cashbook/CashbookList';
 import TransactionsDashboard from '../pages/transactions/TransactionsDashboard';
 import { TransactionsProvider } from '../context/TransactionsContext';
 import TransactionForm from '../components/transactions/TransactionForm';
+import SettingsPage from '../pages/SettingsPage';
 
 const AppRoutes = () => {
   const router = createBrowserRouter([
@@ -74,6 +75,16 @@ const AppRoutes = () => {
         <ProtectedRoute>
           <DashboardLayout>
             <StoreList />
+          </DashboardLayout>
+        </ProtectedRoute>
+      ),
+    },
+     {
+      path: "/settings",
+      element: (
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SettingsPage />
           </DashboardLayout>
         </ProtectedRoute>
       ),

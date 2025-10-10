@@ -3,13 +3,16 @@ from django.contrib.auth import get_user_model
 from .models import Store, StoreUser, Cashbook
 
 User = get_user_model()
-
+class StoreOwnerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'username', 'email']
 class StoreSerializer(serializers.ModelSerializer):
     # Add user-specific fields
     user_role = serializers.SerializerMethodField()
     cashbook_count = serializers.SerializerMethodField()
     user_count = serializers.SerializerMethodField()
-    
+    store_owner = StoreOwnerSerializer(read_only=True)
     class Meta:
         model = Store
         fields = '__all__'
@@ -101,37 +104,7 @@ class CashbookSerializer(serializers.ModelSerializer):
             return store_user.role if store_user else None
         return None
 
-# Simplified serializer for my_stores endpoint
-class MyStoreSerializer(serializers.ModelSerializer):
-    """Serializer specifically for the my_stores endpoint"""
-    store = StoreSerializer(read_only=True)
-    
-    class Meta:
-        model = StoreUser
-        fields = ['id', 'store', 'role', 'created_at']
 
-# Alternative approach: Store serializer with minimal user info
-class StoreListSerializer(serializers.ModelSerializer):
-    """Lightweight serializer for store lists"""
-    user_role = serializers.SerializerMethodField()
-    cashbook_count = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Store
-        fields = ['id', 'name', 'created_at', 'updated_at', 'user_role', 'cashbook_count']
-    
-    def get_user_role(self, obj):
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            store_user = StoreUser.objects.filter(
-                user=request.user, 
-                store=obj
-            ).first()
-            return store_user.role if store_user else None
-        return None
-    
-    def get_cashbook_count(self, obj):
-        return obj.cashbooks.count()
 
 # User search serializer for adding users to stores
 class UserSearchSerializer(serializers.ModelSerializer):

@@ -1,35 +1,302 @@
 // src/pages/cashbook/CashbookList.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import TransactionList from '../../components/transactions/TransactionList';
-import TransactionFilters from '../../components/transactions/TransactionFilters';
-import SummaryCards from '../../components/transactions/SummaryCards';
-import MonthlyChart from '../../components/transactions/MonthlyChart';
-import CategoryChart from '../../components/transactions/CategoryChart';
-import QuickAction from '../../components/transactions/QuickAction';
-import Loader from '../../components/common/Loader';
-import ErrorMessage from '../../components/transactions/ErrorMessage';
-import '../../components/css/transactions/Dashboard.css';
 import {
   Box, Paper, Typography, Button, TextField,
   Alert, CircularProgress, Card, CardContent, Grid,
   Chip, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, Snackbar, Tooltip, Fab, alpha, useTheme,
-  Breadcrumbs, Link, Divider
+  Breadcrumbs, Link, Divider, Menu, MenuItem, Badge,
+  Tabs, Tab, FormControlLabel, Switch, Avatar, AvatarGroup,
+  InputAdornment, CardActions, Zoom, Fade
 } from '@mui/material';
 import {
   Add, Edit, Delete, Visibility, ReceiptLong,
   Search, CalendarToday, AccountBalance, Store,
-  NavigateNext
+  NavigateNext, MoreVert, FilterList, Sort,
+  Download, Upload, Share, Archive, Refresh,
+  TrendingUp, TrendingDown, AttachMoney,
+  People, Security, Speed, Analytics
 } from '@mui/icons-material';
 import { useStore } from '../../context/StoreContext';
+
+// Enhanced Cashbook Card Component
+const CashbookCard = ({ 
+  cashbook, 
+  storeName, 
+  onEdit, 
+  onDelete, 
+  onViewTransactions,
+  onShare,
+  onExport 
+}) => {
+  const theme = useTheme();
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const [hovered, setHovered] = useState(false);
+
+  const handleMenuOpen = (event) => {
+    event.stopPropagation();
+    setMenuAnchor(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchor(null);
+  };
+
+  const getPerformanceColor = (balance) => {
+    if (balance > 1000) return theme.palette.success.main;
+    if (balance > 0) return theme.palette.warning.main;
+    return theme.palette.error.main;
+  };
+
+  const getPerformanceIcon = (balance) => {
+    if (balance > 1000) return <TrendingUp sx={{ fontSize: 16 }} />;
+    if (balance > 0) return <TrendingUp sx={{ fontSize: 16, color: theme.palette.warning.main }} />;
+    return <TrendingDown sx={{ fontSize: 16 }} />;
+  };
+
+  return (
+    <Zoom in={true} style={{ transitionDelay: cashbook.id % 3 * 100 + 'ms' }}>
+      <Card
+        sx={{
+          height: '100%',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          background: `linear-gradient(145deg, ${alpha(theme.palette.background.paper, 0.8)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
+          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          position: 'relative',
+          overflow: 'visible',
+          '&:hover': {
+            transform: 'translateY(-8px) scale(1.02)',
+            boxShadow: theme.shadows[16],
+            borderColor: alpha(theme.palette.primary.main, 0.3),
+          },
+          '&::before': hovered ? {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 4,
+            background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+            borderRadius: '4px 4px 0 0'
+          } : {}
+        }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        {/* Status Badge */}
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 12,
+            right: 12,
+            zIndex: 2
+          }}
+        >
+          <Chip
+            icon={getPerformanceIcon(cashbook.balance)}
+            label={cashbook.is_active ? "Active" : "Inactive"}
+            color={cashbook.is_active ? "success" : "default"}
+            size="small"
+            variant="filled"
+            sx={{
+              fontWeight: 600,
+              backdropFilter: 'blur(10px)',
+              backgroundColor: cashbook.is_active 
+                ? alpha(theme.palette.success.main, 0.15)
+                : alpha(theme.palette.grey[500], 0.15)
+            }}
+          />
+        </Box>
+
+        <CardContent sx={{ p: 3, pb: 2 }}>
+          {/* Header with Menu */}
+          <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+            <Box sx={{ maxWidth: '70%' }}>
+              <Typography 
+                variant="h6" 
+                component="h2" 
+                sx={{ 
+                  fontWeight: 700,
+                  background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  color: 'transparent',
+                  lineHeight: 1.2
+                }}
+              >
+                {cashbook.name}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                {storeName}
+              </Typography>
+            </Box>
+            
+            <IconButton
+              size="small"
+              onClick={handleMenuOpen}
+              sx={{
+                backgroundColor: alpha(theme.palette.background.default, 0.6),
+                backdropFilter: 'blur(10px)',
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.1)
+                }
+              }}
+            >
+              <MoreVert fontSize="small" />
+            </IconButton>
+          </Box>
+
+          {/* Quick Stats */}
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid item xs={6}>
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 1.5,
+                  textAlign: 'center',
+                  borderRadius: 2,
+                  backgroundColor: alpha(theme.palette.primary.main, 0.02),
+                  borderColor: alpha(theme.palette.primary.main, 0.1)
+                }}
+              >
+                <Typography variant="caption" color="text.secondary" display="block">
+                  Transactions
+                </Typography>
+                <Typography variant="h6" color="primary.main" sx={{ fontWeight: 700 }}>
+                  {cashbook.transaction_count ?? 0}
+                </Typography>
+              </Paper>
+            </Grid>
+            <Grid item xs={6}>
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 1.5,
+                  textAlign: 'center',
+                  borderRadius: 2,
+                  backgroundColor: alpha(getPerformanceColor(cashbook.balance), 0.02),
+                  borderColor: alpha(getPerformanceColor(cashbook.balance), 0.1)
+                }}
+              >
+                <Typography variant="caption" color="text.secondary" display="block">
+                  Balance
+                </Typography>
+                <Typography 
+                  variant="h6" 
+                  sx={{ 
+                    fontWeight: 700,
+                    color: getPerformanceColor(cashbook.balance)
+                  }}
+                >
+                  ${typeof cashbook.balance === "number" ? cashbook.balance.toFixed(2) : "0.00"}
+                </Typography>
+              </Paper>
+            </Grid>
+          </Grid>
+
+          {/* Metadata */}
+          <Box sx={{ mb: 2 }}>
+            <Box display="flex" alignItems="center" sx={{ mb: 1 }}>
+              <CalendarToday sx={{ fontSize: 14, mr: 1, color: 'text.secondary' }} />
+              <Typography variant="caption" color="text.secondary">
+                Created: {new Date(cashbook.created_at).toLocaleDateString()}
+              </Typography>
+            </Box>
+            <Box display="flex" alignItems="center">
+              <Speed sx={{ fontSize: 14, mr: 1, color: 'text.secondary' }} />
+              <Typography variant="caption" color="text.secondary">
+                Updated: {new Date(cashbook.updated_at).toLocaleDateString()}
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* Progress Bar for Usage */}
+          <Box sx={{ mb: 2 }}>
+            <Box display="flex" justifyContent="space-between" sx={{ mb: 0.5 }}>
+              <Typography variant="caption" color="text.secondary">
+                Storage Usage
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {Math.min((cashbook.transaction_count / 1000) * 100, 100).toFixed(1)}%
+              </Typography>
+            </Box>
+            <Box
+              sx={{
+                height: 4,
+                backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                borderRadius: 2,
+                overflow: 'hidden'
+              }}
+            >
+              <Box
+                sx={{
+                  height: '100%',
+                  width: `${Math.min((cashbook.transaction_count / 1000) * 100, 100)}%`,
+                  background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                  borderRadius: 2,
+                  transition: 'width 0.5s ease-in-out'
+                }}
+              />
+            </Box>
+          </Box>
+        </CardContent>
+
+        <CardActions sx={{ p: 2, pt: 0 }}>
+          <Button
+            fullWidth
+            variant="contained"
+            startIcon={<ReceiptLong />}
+            onClick={() => onViewTransactions(cashbook.id)}
+            sx={{
+              borderRadius: 2,
+              py: 1,
+              background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+              '&:hover': {
+                transform: 'translateY(-1px)',
+                boxShadow: theme.shadows[8]
+              },
+              transition: 'all 0.2s ease-in-out'
+            }}
+          >
+            Manage Transactions
+          </Button>
+        </CardActions>
+
+        {/* Context Menu */}
+        <Menu
+          anchorEl={menuAnchor}
+          open={Boolean(menuAnchor)}
+          onClose={handleMenuClose}
+          TransitionComponent={Fade}
+        >
+          <MenuItem onClick={() => { onEdit(cashbook); handleMenuClose(); }}>
+            <Edit sx={{ mr: 1, fontSize: 20 }} /> Edit Cashbook
+          </MenuItem>
+          <MenuItem onClick={() => { onShare(cashbook); handleMenuClose(); }}>
+            <Share sx={{ mr: 1, fontSize: 20 }} /> Share Access
+          </MenuItem>
+          <MenuItem onClick={() => { onExport(cashbook); handleMenuClose(); }}>
+            <Download sx={{ mr: 1, fontSize: 20 }} /> Export Data
+          </MenuItem>
+          <Divider />
+          <MenuItem 
+            onClick={() => { onDelete(cashbook.id, cashbook.name); handleMenuClose(); }}
+            sx={{ color: theme.palette.error.main }}
+          >
+            <Delete sx={{ mr: 1, fontSize: 20 }} /> Delete Cashbook
+          </MenuItem>
+        </Menu>
+      </Card>
+    </Zoom>
+  );
+};
 
 const CashbookList = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { storeId } = useParams();
 
-  // ✅ Using context methods
   const {
     stores,
     cashbooks,
@@ -49,11 +316,64 @@ const CashbookList = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCashbook, setSelectedCashbook] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState(0);
+  const [sortBy, setSortBy] = useState('name');
+  const [filterActive, setFilterActive] = useState(true);
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [formData, setFormData] = useState({
-    name: ''
+    name: '',
+    description: '',
+    currency: 'USD'
   });
 
-  // ✅ Fetch store and cashbooks on component mount
+  // Enhanced filtering and sorting
+  const filteredCashbooks = useMemo(() => {
+    let filtered = cashbooks.filter(cashbook => {
+      const matchesSearch = cashbook.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           cashbook.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesActive = filterActive ? cashbook.is_active : true;
+      return matchesSearch && matchesActive;
+    });
+
+    // Sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'balance':
+          return (b.balance || 0) - (a.balance || 0);
+        case 'transactions':
+          return (b.transaction_count || 0) - (a.transaction_count || 0);
+        case 'recent':
+          return new Date(b.updated_at) - new Date(a.updated_at);
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [cashbooks, searchTerm, sortBy, filterActive]);
+
+  // Enhanced statistics
+  const statistics = useMemo(() => {
+    const totalTransactions = filteredCashbooks.reduce(
+      (sum, cb) => sum + (cb.transaction_count ?? 0), 0
+    );
+    const totalBalance = filteredCashbooks.reduce(
+      (sum, cb) => sum + (typeof cb.balance === "number" ? cb.balance : 0), 0
+    );
+    const activeCashbooks = filteredCashbooks.filter(cb => cb.is_active).length;
+    const averageBalance = filteredCashbooks.length > 0 ? totalBalance / filteredCashbooks.length : 0;
+
+    return {
+      totalTransactions,
+      totalBalance,
+      activeCashbooks,
+      averageBalance,
+      totalCashbooks: filteredCashbooks.length
+    };
+  }, [filteredCashbooks]);
+
   useEffect(() => {
     if (storeId) {
       fetchStore(storeId);
@@ -61,21 +381,7 @@ const CashbookList = () => {
     }
   }, [storeId, fetchStore, fetchStoreCashbooks]);
 
-  // ✅ Get current store details, fallback to "Unknown Store" if not found
   const currentStoreData = currentStore || stores.find(store => store.id === parseInt(storeId)) || { name: "Unknown Store" };
-
-  // ✅ Filter cashbooks based on search term
-  const filteredCashbooks = cashbooks.filter(cashbook =>
-    cashbook.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Calculate totals for filtered cashbooks
-  const totalTransactions = filteredCashbooks.reduce(
-    (sum, cb) => sum + (cb.transaction_count ?? 0), 0
-  );
-  const totalBalance = filteredCashbooks.reduce(
-    (sum, cb) => sum + (typeof cb.balance === "number" ? cb.balance : 0), 0
-  );
 
   const handleSaveCashbook = async () => {
     try {
@@ -91,7 +397,7 @@ const CashbookList = () => {
         setSuccess('Cashbook created successfully!');
       }
       closeDialog();
-      fetchStoreCashbooks(storeId); // Refresh the list
+      fetchStoreCashbooks(storeId);
     } catch (err) {
       console.error('Error saving cashbook:', err);
     }
@@ -103,85 +409,77 @@ const CashbookList = () => {
         clearError();
         await deleteCashbook(id);
         setSuccess('Cashbook deleted successfully!');
-        fetchStoreCashbooks(storeId); // Refresh the list
+        fetchStoreCashbooks(storeId);
       } catch (err) {
         console.error('Error deleting cashbook:', err);
       }
     }
   };
 
+  const handleShareCashbook = (cashbook) => {
+    // Implement share functionality
+    console.log('Sharing cashbook:', cashbook);
+    setSuccess(`Share options for "${cashbook.name}"`);
+  };
+
+  const handleExportCashbook = (cashbook) => {
+    // Implement export functionality
+    console.log('Exporting cashbook:', cashbook);
+    setSuccess(`Exporting data for "${cashbook.name}"`);
+  };
+
   const openEdit = (cashbook) => {
     setSelectedCashbook(cashbook);
     setFormData({
-      name: cashbook.name || ''
+      name: cashbook.name || '',
+      description: cashbook.description || '',
+      currency: cashbook.currency || 'USD'
     });
     setDialogOpen(true);
   };
 
   const openCreate = () => {
     setSelectedCashbook(null);
-    setFormData({ name: '' });
+    setFormData({ name: '', description: '', currency: 'USD' });
     setDialogOpen(true);
   };
 
   const closeDialog = () => {
     setDialogOpen(false);
     setSelectedCashbook(null);
-    setFormData({ name: '' });
+    setFormData({ name: '', description: '', currency: 'USD' });
   };
 
   const handleViewTransactions = (cashbookId) => {
     navigate(`/stores/${storeId}/cashbooks/${cashbookId}/transactions`);
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const handleRefresh = () => {
+    fetchStoreCashbooks(storeId);
+    setSuccess('Cashbooks refreshed successfully!');
   };
 
   if (loading && !currentStoreData) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress size={60} />
-        <Typography variant="body1" sx={{ ml: 2 }}>
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px" flexDirection="column">
+        <CircularProgress size={60} thickness={4} />
+        <Typography variant="h6" sx={{ mt: 2, color: 'text.secondary' }}>
           Loading cashbooks...
         </Typography>
       </Box>
     );
   }
 
-  if (!currentStoreData) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error">
-          Store not found or you don't have access to this store.
-        </Alert>
-        <Button 
-          sx={{ mt: 2 }} 
-          onClick={() => navigate('/stores')}
-          startIcon={<Store />}
-        >
-          Back to Stores
-        </Button>
-      </Box>
-    );
-  }
-
   return (
-    <Box sx={{ p: 3 }}>
-      {/* BREADCRUMB NAVIGATION */}
+    <Box sx={{ p: 3, maxWidth: '1400px', margin: '0 auto' }}>
+      {/* Enhanced Breadcrumb */}
       <Breadcrumbs separator={<NavigateNext fontSize="small" />} sx={{ mb: 3 }}>
         <Link
           color="inherit"
           onClick={() => navigate('/stores')}
           sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
         >
+          <Store sx={{ mr: 0.5, fontSize: 18 }} />
           Stores
         </Link>
         <Link
@@ -191,90 +489,240 @@ const CashbookList = () => {
         >
           {currentStoreData.name}
         </Link>
-        <Typography color="text.primary">Cashbooks</Typography>
+        <Typography color="text.primary" sx={{ fontWeight: 600 }}>
+          <ReceiptLong sx={{ mr: 0.5, fontSize: 18 }} />
+          Cashbooks
+        </Typography>
       </Breadcrumbs>
 
-      {/* HEADER */}
+      {/* Enhanced Header */}
       <Paper
         elevation={0}
         sx={{
           p: 4,
           mb: 3,
           borderRadius: 4,
-          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`
+          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.secondary.main, 0.08)} 100%)`,
+          border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 4,
+            background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`
+          }
         }}
       >
         <Box display="flex" justifyContent="space-between" alignItems="flex-start">
           <Box>
-            <Box display="flex" alignItems="center" sx={{ mb: 1 }}>
-              <Store sx={{ mr: 2, color: 'primary.main', fontSize: 32 }} />
+            <Box display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <AccountBalance sx={{ mr: 2, color: 'primary.main', fontSize: 40 }} />
               <Box>
-                <Typography variant="h4" gutterBottom>
+                <Typography variant="h3" gutterBottom sx={{ fontWeight: 800 }}>
                   {currentStoreData.name}
                 </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  Manage cashbooks and track financial transactions
+                <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400 }}>
+                  Cashbook Management Dashboard
                 </Typography>
               </Box>
             </Box>
-            <Chip 
-              icon={<AccountBalance />} 
-              label="Cashbooks Management" 
-              variant="outlined" 
-              sx={{ mt: 1 }}
-            />
+            <Box display="flex" gap={1} flexWrap="wrap">
+              <Chip 
+                icon={<Analytics />} 
+                label={`${statistics.totalCashbooks} Cashbooks`} 
+                variant="filled"
+                sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.1) }}
+              />
+              <Chip 
+                icon={<AttachMoney />} 
+                label={`Total: $${statistics.totalBalance.toFixed(2)}`} 
+                variant="filled"
+                sx={{ backgroundColor: alpha(theme.palette.success.main, 0.1) }}
+              />
+              <Chip 
+                icon={<People />} 
+                label={`${storeUsers?.length || 0} Team Members`} 
+                variant="filled"
+                sx={{ backgroundColor: alpha(theme.palette.info.main, 0.1) }}
+              />
+            </Box>
           </Box>
-          <Button 
-            variant="contained" 
-            startIcon={<Add />} 
-            onClick={openCreate}
-            size="large"
+          <Box display="flex" gap={2} alignItems="center">
+            <Tooltip title="Refresh Data">
+              <IconButton onClick={handleRefresh} size="large">
+                <Refresh />
+              </IconButton>
+            </Tooltip>
+            <Button 
+              variant="contained" 
+              startIcon={<Add />} 
+              onClick={openCreate}
+              size="large"
+              sx={{
+                borderRadius: 3,
+                px: 3,
+                py: 1,
+                background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: theme.shadows[8]
+                },
+                transition: 'all 0.2s ease-in-out'
+              }}
+            >
+              New Cashbook
+            </Button>
+          </Box>
+        </Box>
+      </Paper>
+
+      {/* Enhanced Statistics Cards */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper
+            sx={{
+              p: 3,
+              borderRadius: 3,
+              background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.primary.main, 0.1)} 100%)`,
+              border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+              textAlign: 'center'
+            }}
           >
-            New Cashbook
+            <ReceiptLong sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
+            <Typography variant="h4" fontWeight={700} color="primary.main">
+              {statistics.totalCashbooks}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Total Cashbooks
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper
+            sx={{
+              p: 3,
+              borderRadius: 3,
+              background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.05)} 0%, ${alpha(theme.palette.success.main, 0.1)} 100%)`,
+              border: `1px solid ${alpha(theme.palette.success.main, 0.1)}`,
+              textAlign: 'center'
+            }}
+          >
+            <AttachMoney sx={{ fontSize: 40, color: 'success.main', mb: 1 }} />
+            <Typography variant="h4" fontWeight={700} color="success.main">
+              ${statistics.totalBalance.toFixed(2)}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Total Balance
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper
+            sx={{
+              p: 3,
+              borderRadius: 3,
+              background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.05)} 0%, ${alpha(theme.palette.info.main, 0.1)} 100%)`,
+              border: `1px solid ${alpha(theme.palette.info.main, 0.1)}`,
+              textAlign: 'center'
+            }}
+          >
+            <TrendingUp sx={{ fontSize: 40, color: 'info.main', mb: 1 }} />
+            <Typography variant="h4" fontWeight={700} color="info.main">
+              {statistics.activeCashbooks}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Active Cashbooks
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper
+            sx={{
+              p: 3,
+              borderRadius: 3,
+              background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.05)} 0%, ${alpha(theme.palette.warning.main, 0.1)} 100%)`,
+              border: `1px solid ${alpha(theme.palette.warning.main, 0.1)}`,
+              textAlign: 'center'
+            }}
+          >
+            <Analytics sx={{ fontSize: 40, color: 'warning.main', mb: 1 }} />
+            <Typography variant="h4" fontWeight={700} color="warning.main">
+              {statistics.totalTransactions}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Total Transactions
+            </Typography>
+          </Paper>
+        </Grid>
+      </Grid>
+
+      {/* Enhanced Controls Bar */}
+      <Paper
+        sx={{
+          p: 2,
+          mb: 3,
+          borderRadius: 3,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 2,
+          background: alpha(theme.palette.background.paper, 0.8),
+          backdropFilter: 'blur(10px)'
+        }}
+      >
+        <Box display="flex" alignItems="center" gap={2} flexWrap="wrap">
+          <TextField
+            placeholder="Search cashbooks..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            sx={{ width: 300 }}
+            InputProps={{
+              startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />
+            }}
+          />
+          
+          <Tooltip title="Sort By">
+            <Button
+              startIcon={<Sort />}
+              onClick={() => setSortBy(sortBy === 'name' ? 'balance' : 'name')}
+              variant="outlined"
+            >
+              Sort: {sortBy === 'name' ? 'Name' : sortBy === 'balance' ? 'Balance' : 'Transactions'}
+            </Button>
+          </Tooltip>
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={filterActive}
+                onChange={(e) => setFilterActive(e.target.checked)}
+                color="primary"
+              />
+            }
+            label="Active Only"
+          />
+        </Box>
+
+        <Box display="flex" alignItems="center" gap={1}>
+          <Typography variant="body2" color="text.secondary">
+            {filteredCashbooks.length} cashbook(s)
+          </Typography>
+          <Button
+            startIcon={<Download />}
+            variant="outlined"
+            size="small"
+          >
+            Export All
           </Button>
         </Box>
       </Paper>
 
-      {/* TOTALS SUMMARY */}
-      <Paper
-        elevation={1}
-        sx={{
-          mb: 3,
-          p: 2,
-          borderRadius: 2,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.07)} 0%, ${alpha(theme.palette.secondary.main, 0.07)} 100%)`
-        }}
-      >
-        <Typography variant="h6">
-          Total Transactions: <strong>{totalTransactions}</strong>
-        </Typography>
-        <Typography variant="h6">
-          Total Balance: <strong style={{ color: totalBalance >= 0 ? theme.palette.success.main : theme.palette.error.main }}>
-            ${totalBalance.toFixed(2)}
-          </strong>
-        </Typography>
-      </Paper>
-
-      {/* SEARCH BAR */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <TextField
-          placeholder="Search cashbooks..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          sx={{ width: 300 }}
-          InputProps={{
-            startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />
-          }}
-        />
-        <Typography variant="body2" color="text.secondary">
-          {filteredCashbooks.length} cashbook(s) found
-        </Typography>
-      </Box>
-
-      {/* ERROR ALERT */}
+      {/* Error and Success Messages */}
       {error && (
         <Alert 
           severity="error" 
@@ -285,10 +733,9 @@ const CashbookList = () => {
         </Alert>
       )}
 
-      {/* SUCCESS SNACKBAR */}
       <Snackbar
         open={!!success}
-        autoHideDuration={3000}
+        autoHideDuration={4000}
         onClose={() => setSuccess('')}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
@@ -297,25 +744,31 @@ const CashbookList = () => {
         </Alert>
       </Snackbar>
 
-      {/* CASHBOOKS GRID */}
+      {/* Enhanced Cashbooks Grid */}
       {filteredCashbooks.length === 0 ? (
         <Paper
           sx={{
-            p: 6,
+            p: 8,
             textAlign: 'center',
-            borderRadius: 3,
-            backgroundColor: alpha(theme.palette.background.default, 0.5)
+            borderRadius: 4,
+            backgroundColor: alpha(theme.palette.background.default, 0.5),
+            border: `2px dashed ${alpha(theme.palette.primary.main, 0.2)}`
           }}
         >
-          <ReceiptLong sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-          <Typography variant="h6" color="text.secondary" gutterBottom>
+          <ReceiptLong sx={{ fontSize: 80, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+          <Typography variant="h5" color="text.secondary" gutterBottom>
             No cashbooks found
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
             {searchTerm ? 'Try adjusting your search terms' : 'Get started by creating your first cashbook'}
           </Typography>
           {!searchTerm && (
-            <Button variant="contained" startIcon={<Add />} onClick={openCreate}>
+            <Button 
+              variant="contained" 
+              startIcon={<Add />} 
+              onClick={openCreate}
+              size="large"
+            >
               Create Your First Cashbook
             </Button>
           )}
@@ -324,135 +777,48 @@ const CashbookList = () => {
         <Grid container spacing={3}>
           {filteredCashbooks.map((cashbook) => (
             <Grid item xs={12} sm={6} lg={4} key={cashbook.id}>
-              <Card
-                sx={{
-                  height: '100%',
-                  transition: 'all 0.2s ease-in-out',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: theme.shadows[8]
-                  }
-                }}
-              >
-                <CardContent sx={{ p: 3 }}>
-                  {/* CASHBOOK HEADER */}
-                  <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
-                    <Typography variant="h6" component="h2" sx={{ fontWeight: 600 }}>
-                      {cashbook.name}
-                    </Typography>
-                    <Chip
-                      label={cashbook.is_active ? "Active" : "Inactive"}
-                      color={cashbook.is_active ? "success" : "default"}
-                      size="small"
-                      variant="outlined"
-                    />
-                  </Box>
-
-                  {/* CASHBOOK METADATA */}
-                  <Box sx={{ mb: 3 }}>
-                    <Box display="flex" alignItems="center" sx={{ mb: 1 }}>
-                      <Store sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
-                      <Typography variant="caption" color="text.secondary">
-                        Store: {cashbook.store_name || currentStoreData.name}
-                      </Typography>
-                    </Box>
-                    <Box display="flex" alignItems="center" sx={{ mb: 1 }}>
-                      <CalendarToday sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
-                      <Typography variant="caption" color="text.secondary">
-                        Created: {formatDate(cashbook.created_at)}
-                      </Typography>
-                    </Box>
-                    <Box display="flex" alignItems="center" sx={{ mb: 1 }}>
-                      <AccountBalance sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
-                      <Typography variant="caption" color="text.secondary">
-                        Balance: {typeof cashbook.balance === "number" ? `$${cashbook.balance.toFixed(2)}` : "N/A"}
-                      </Typography>
-                    </Box>
-                    <Box display="flex" alignItems="center">
-                      <CalendarToday sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
-                      <Typography variant="caption" color="text.secondary">
-                        Updated: {formatDate(cashbook.updated_at)}
-                      </Typography>
-                    </Box>
-                  </Box>
-
-                  {/* STATISTICS */}
-                  <Paper
-                    variant="outlined"
-                    sx={{
-                      p: 2,
-                      mb: 3,
-                      backgroundColor: alpha(theme.palette.primary.main, 0.02),
-                      borderColor: alpha(theme.palette.primary.main, 0.1)
-                    }}
-                  >
-                    <Box display="flex" justifyContent="space-between">
-                      <Box textAlign="center">
-                        <Typography variant="caption" color="text.secondary">
-                          Transactions
-                        </Typography>
-                        <Typography variant="h6" color="primary.main">
-                          {cashbook.transaction_count ?? 0}
-                        </Typography>
-                      </Box>
-                      <Box textAlign="center">
-                        <Typography variant="caption" color="text.secondary">
-                          Balance
-                        </Typography>
-                        <Typography variant="h6" color={cashbook.balance >= 0 ? "success.main" : "error.main"}>
-                          ${typeof cashbook.balance === "number" ? cashbook.balance.toFixed(2) : "0.00"}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Paper>
-
-                  {/* ACTION BUTTONS */}
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Button
-                      size="small"
-                      startIcon={<ReceiptLong />}
-                      onClick={() => handleViewTransactions(cashbook.id)}
-                      variant="contained"
-                    >
-                      View Transactions
-                    </Button>
-                    <Box display="flex" gap={1}>
-                      <Tooltip title="Edit Cashbook">
-                        <IconButton
-                          onClick={() => openEdit(cashbook)}
-                          size="small"
-                          color="primary"
-                        >
-                          <Edit fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete Cashbook">
-                        <IconButton
-                          onClick={() => handleDeleteCashbook(cashbook.id, cashbook.name)}
-                          size="small"
-                          color="error"
-                        >
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
+              <CashbookCard
+                cashbook={cashbook}
+                storeName={currentStoreData.name}
+                onEdit={openEdit}
+                onDelete={handleDeleteCashbook}
+                onViewTransactions={handleViewTransactions}
+                onShare={handleShareCashbook}
+                onExport={handleExportCashbook}
+              />
             </Grid>
           ))}
         </Grid>
       )}
 
-      {/* CREATE/EDIT DIALOG */}
-      <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
-        <DialogTitle>
-          {selectedCashbook ? 'Edit Cashbook' : 'Create New Cashbook'}
+      {/* Enhanced Create/Edit Dialog */}
+      <Dialog 
+        open={dialogOpen} 
+        onClose={closeDialog} 
+        fullWidth 
+        maxWidth="sm"
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.9)} 0%, ${alpha(theme.palette.background.paper, 0.95)} 100%)`,
+            backdropFilter: 'blur(10px)'
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="h5" fontWeight={700}>
+            {selectedCashbook ? 'Edit Cashbook' : 'Create New Cashbook'}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {selectedCashbook ? 'Update your cashbook details' : 'Add a new cashbook to manage transactions'}
+          </Typography>
         </DialogTitle>
+        
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Store: <strong>{currentStoreData.name}</strong>
           </Typography>
+          
           <TextField
             autoFocus
             fullWidth
@@ -461,31 +827,55 @@ const CashbookList = () => {
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             margin="normal"
             placeholder="Enter cashbook name..."
-            helperText="Cashbook name must be unique within this store"
+            helperText="Give your cashbook a descriptive name"
+            sx={{ mb: 2 }}
+          />
+          
+          <TextField
+            fullWidth
+            label="Description"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            margin="normal"
+            placeholder="Describe the purpose of this cashbook..."
+            multiline
+            rows={3}
+            helperText="Optional: Add a description for better organization"
           />
         </DialogContent>
-        <DialogActions sx={{ p: 3 }}>
-          <Button onClick={closeDialog} color="inherit">
+        
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button onClick={closeDialog} color="inherit" size="large">
             Cancel
           </Button>
           <Button 
             onClick={handleSaveCashbook} 
             variant="contained"
             disabled={!formData.name.trim() || loading}
+            size="large"
+            sx={{
+              borderRadius: 2,
+              px: 3
+            }}
           >
             {selectedCashbook ? 'Update Cashbook' : 'Create Cashbook'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* FLOATING ACTION BUTTON FOR MOBILE */}
+      {/* Enhanced Floating Action Button */}
       <Fab
         color="primary"
         sx={{ 
           position: 'fixed', 
           bottom: 24, 
-          right: 24, 
-          display: { xs: 'flex', md: 'none' } 
+          right: 24,
+          background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+          '&:hover': {
+            transform: 'scale(1.1)',
+            boxShadow: theme.shadows[12]
+          },
+          transition: 'all 0.2s ease-in-out'
         }}
         onClick={openCreate}
       >

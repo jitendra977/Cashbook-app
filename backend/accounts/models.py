@@ -40,6 +40,7 @@ def user_profile_image_path(instance, filename):
 class User(AbstractUser):
     email = models.EmailField(unique=True)
     phone_number = models.CharField(max_length=20, blank=True, null=True)
+    address = models.CharField(max_length=100, blank=True, null=True)
     profile_image = models.ImageField(upload_to=user_profile_image_path, blank=True, null=True)
     
     # ================================== email verification system ==================================

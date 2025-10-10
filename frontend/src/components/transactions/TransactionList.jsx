@@ -112,7 +112,7 @@ const TransactionList = ({
         // User info
         created_by_username: tx.created_by_username || tx.created_by_username?.username || 'System',
         created_by: tx.created_by,
-        updated_by_username: tx.updated_by_username || tx.updated_by_username?.username,
+        updated_by_username: tx.updated_by_username || tx.updated_by?.username,
         updated_by: tx.updated_by,
         // Store and cashbook info
         store: tx.store || tx.cashbook?.store || tx.store_id,

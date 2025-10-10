@@ -7,8 +7,16 @@ from .models import Store, StoreUser, Cashbook
 # -----------------------------
 @admin.register(Store)
 class StoreAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'created_at', 'updated_at')
-    search_fields = ('name',)
+    list_display = (
+        'id',
+        'name',
+        'address',
+        'contact_number',
+        'store_owner', 
+        'created_at',
+        'updated_at'
+    )
+    search_fields = ('name', 'store_owner__username')  # ✅ Optional search update
     ordering = ('id',)
 
 

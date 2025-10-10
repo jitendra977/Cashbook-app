@@ -15,7 +15,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'email', 'first_name', 'last_name',
+            'id', 'username', 'email', 'address','first_name', 'last_name',
             'is_active', 'is_staff', 'is_superuser', 'date_joined',
             'phone_number', 'profile_image', 'groups', 'user_permissions',
             'is_verified', 'created_at', 'updated_at' ,'last_login','verification_token'
@@ -42,7 +42,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'username', 'email', 'password', 'password_confirm',
+            'username', 'email', 'address', 'password', 'password_confirm',
             'first_name', 'last_name', 'phone_number', 'profile_image'
         ]
         extra_kwargs = {
@@ -110,7 +110,7 @@ class UpdateUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'username', 'email', 'first_name', 'last_name',
+            'username', 'email', 'address', 'first_name', 'last_name',
             'phone_number', 'profile_image', 'password', 'password_confirm'
         ]
 

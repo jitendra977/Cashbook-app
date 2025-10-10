@@ -17,33 +17,33 @@ import {
   Download, Upload, QrCode2, Search, Sort
 } from '@mui/icons-material';
 
-// Custom Components
 import TransactionList from '../../components/transactions/TransactionList';
 import TransactionFilters from '../../components/transactions/TransactionFilters';
 import MonthlyChart from '../../components/transactions/MonthlyChart';
 import CategoryChart from '../../components/transactions/CategoryChart';
 import TransactionForm from '../../components/transactions/TransactionForm';
+import transactionsAPI from '../../api/transactions';
 import { useTransactionsContext } from '../../context/TransactionsContext';
 
-// Enhanced Summary Card with Skeleton Loading
-const SummaryCard = ({ 
-  title, 
-  value, 
-  subtitle, 
-  icon: Icon, 
-  color = 'primary', 
-  trend, 
+// Enhanced Summary Card Component
+const SummaryCard = ({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  color = 'primary',
+  trend,
   loading = false,
-  onClick 
+  onClick
 }) => {
   const theme = useTheme();
-  
+
   return (
-    <Card 
-      elevation={2} 
-      sx={{ 
-        height: '100%', 
-        position: 'relative', 
+    <Card
+      elevation={2}
+      sx={{
+        height: '100%',
+        position: 'relative',
         overflow: 'visible',
         cursor: onClick ? 'pointer' : 'default',
         transition: 'all 0.2s ease-in-out',
@@ -65,7 +65,7 @@ const SummaryCard = ({
               {loading ? (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <CircularProgress size={20} />
-                  <Typography variant="h4" fontWeight="bold" color="text.disabled">
+                  <Typography variant="h5" fontWeight="bold" color="text.disabled">
                     Loading...
                   </Typography>
                 </Box>
@@ -92,7 +92,7 @@ const SummaryCard = ({
               <Icon fontSize="large" />
             </Avatar>
           </Stack>
-          
+
           {trend && (
             <Stack direction="row" alignItems="center" spacing={0.5}>
               {trend.value > 0 ? (
@@ -155,28 +155,25 @@ const QuickActionsMenu = ({ anchorEl, open, onClose, onAction }) => {
   );
 };
 
-// Enhanced Search and Filter Bar
-const SearchFilterBar = ({ 
-  onSearch, 
-  onFilterToggle, 
-  onSort, 
+// Search and Filter Bar
+const SearchFilterBar = ({
+  onSearch,
+  onFilterToggle,
+  onSort,
   filtersActive,
   searchQuery,
-  onQuickDateChange 
 }) => {
   const [search, setSearch] = useState(searchQuery || '');
-  
+
   const handleSearchChange = (event) => {
     const value = event.target.value;
     setSearch(value);
-    // Debounced search
     setTimeout(() => onSearch(value), 300);
   };
 
   return (
     <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
-        {/* Search */}
         <TextField
           fullWidth
           variant="outlined"
@@ -188,8 +185,7 @@ const SearchFilterBar = ({
           }}
           sx={{ maxWidth: 400 }}
         />
-        
-        {/* Quick Actions */}
+
         <Stack direction="row" spacing={1} flexWrap="wrap" flexGrow={1}>
           <Button
             variant={filtersActive ? "contained" : "outlined"}
@@ -212,12 +208,61 @@ const SearchFilterBar = ({
   );
 };
 
+// Quick Date Selector Component
+const QuickDateSelector = ({ dateRange, onChange }) => {
+  const ranges = useMemo(() => [
+    {
+      label: 'Today',
+      start: new Date().toISOString().split('T')[0],
+      end: new Date().toISOString().split('T')[0]
+    },
+    {
+      label: '7 Days',
+      start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      end: new Date().toISOString().split('T')[0]
+    },
+    {
+      label: '30 Days',
+      start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      end: new Date().toISOString().split('T')[0]
+    },
+    {
+      label: 'This Month',
+      start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+      end: new Date().toISOString().split('T')[0]
+    },
+    {
+      label: 'Last Month',
+      start: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().split('T')[0],
+      end: new Date(new Date().getFullYear(), new Date().getMonth(), 0).toISOString().split('T')[0]
+    }
+  ], []);
+
+  const isActive = (range) => {
+    return dateRange.start_date === range.start && dateRange.end_date === range.end;
+  };
+
+  return (
+    <Stack direction="row" spacing={1} flexWrap="wrap">
+      {ranges.map((range) => (
+        <Chip
+          key={range.label}
+          label={range.label}
+          onClick={() => onChange({ start_date: range.start, end_date: range.end })}
+          color={isActive(range) ? 'primary' : 'default'}
+          variant={isActive(range) ? 'filled' : 'outlined'}
+          icon={<CalendarToday />}
+        />
+      ))}
+    </Stack>
+  );
+};
+
 const TransactionsDashboard = () => {
   const { storeId, cashbookId } = useParams();
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
 
   const {
     transactions,
@@ -248,15 +293,73 @@ const TransactionsDashboard = () => {
   const [quickActionsAnchor, setQuickActionsAnchor] = useState(null);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
-  // Memoized data calculations
+  // Fetch store and cashbook info on mount
+  useEffect(() => {
+    const fetchContextInfo = async () => {
+      try {
+        let data;
+
+        if (storeId && cashbookId) {
+          data = await transactionsAPI.getTransactionsByCashbook(cashbookId, { page_size: 1 });
+        } else if (storeId) {
+          data = await transactionsAPI.getTransactionsByStore(storeId, { page_size: 1 });
+        } else if (cashbookId) {
+          data = await transactionsAPI.getTransactionsByCashbook(cashbookId, { page_size: 1 });
+        }
+
+        if (data) {
+          const txArray = data?.results || (Array.isArray(data) ? data : []);
+
+          if (txArray.length > 0) {
+            const tx = txArray[0];
+            if (tx.store_name && storeId) {
+              setStoreInfo({ id: storeId, name: tx.store_name });
+            }
+            if (tx.cashbook_name && cashbookId) {
+              setCashbookInfo({ id: cashbookId, name: tx.cashbook_name });
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch context info:', err);
+      }
+    };
+
+    if (storeId || cashbookId) {
+      fetchContextInfo();
+    }
+  }, [storeId, cashbookId]);
+
+  // Memoized data calculations - use summary from API if available
   const summaryStats = useMemo(() => {
+    // Prefer API summary data if available
+    if (summary && typeof summary === 'object' && Object.keys(summary).length > 0) {
+      const apiIncome = parseFloat(summary.total_income || 0);
+      const apiExpense = parseFloat(summary.total_expense || 0);
+
+      return {
+        total: parseFloat(summary.total_amount || 0),
+        income: apiIncome,
+        expense: apiExpense,
+        balance: apiIncome - apiExpense,
+        count: parseInt(summary.total_transactions || 0),
+        completed: parseInt(summary.completed_transactions || 0),
+        pending: parseInt(summary.pending_transactions || 0)
+      };
+    }
+
+    // Fallback to calculating from transactions array
     const txArray = Array.isArray(transactions) ? transactions : [];
     const total = txArray.reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
-    const income = txArray.filter(tx => tx.type_name === 'Income').reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
-    const expense = txArray.filter(tx => tx.type_name === 'Expense').reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
+    const income = txArray.filter(tx =>
+      tx.type_name?.toLowerCase() === 'income'
+    ).reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
+    const expense = txArray.filter(tx =>
+      tx.type_name?.toLowerCase() === 'expense'
+    ).reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
     const completed = txArray.filter(tx => tx.status === 'completed').length;
     const pending = txArray.filter(tx => tx.status === 'pending').length;
-    
+
     return {
       total,
       income,
@@ -266,61 +369,64 @@ const TransactionsDashboard = () => {
       completed,
       pending
     };
-  }, [transactions]);
+  }, [transactions, summary]);
 
   // Filtered transactions based on search
   const filteredTransactions = useMemo(() => {
-    if (!searchQuery) return transactions;
-    
-    return transactions.filter(tx => 
+    if (!searchQuery) return transactions || [];
+
+    const txArray = Array.isArray(transactions) ? transactions : [];
+    return txArray.filter(tx =>
       tx.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tx.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tx.category_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tx.type_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       tx.amount?.toString().includes(searchQuery)
     );
   }, [transactions, searchQuery]);
 
-  // Fetch data with error handling
-  const fetchData = useCallback(async () => {
-    const params = {
-      ...filters,
-      start_date: dateRange.start_date,
-      end_date: dateRange.end_date,
-      search: searchQuery,
-    };
-    
-    try {
-      if (storeId && cashbookId) {
-        await fetchTransactionsByCashbook(cashbookId, params);
-      } else if (storeId) {
-        await fetchTransactionsByStore(storeId, params);
-      } else if (cashbookId) {
-        await fetchTransactionsByCashbook(cashbookId, params);
-      } else {
-        await fetchTransactions(params);
-      }
-      
-      await fetchTransactionSummary(params);
-
-      // Extract store and cashbook info from first transaction
-      if (transactions && transactions.length > 0) {
-        const firstTx = transactions[0];
-        if (firstTx.store_name) {
-          setStoreInfo({ id: storeId, name: firstTx.store_name });
-        }
-        if (firstTx.cashbook_name) {
-          setCashbookInfo({ id: cashbookId, name: firstTx.cashbook_name });
-        }
-      }
-    } catch (err) {
-      console.error('Failed to fetch transactions:', err);
-      showSnackbar('Failed to load transactions', 'error');
-    }
-  }, [storeId, cashbookId, dateRange, filters, searchQuery]);
-
-  // Optimized useEffect with dependencies
+  // Fetch transaction data
   useEffect(() => {
+    const fetchData = async () => {
+      const params = {
+        ...filters,
+        start_date: dateRange.start_date,
+        end_date: dateRange.end_date,
+      };
+
+      try {
+        if (storeId && cashbookId) {
+          await fetchTransactionsByCashbook(cashbookId, params);
+        } else if (storeId) {
+          await fetchTransactionsByStore(storeId, params);
+        } else if (cashbookId) {
+          await fetchTransactionsByCashbook(cashbookId, params);
+        } else {
+          await fetchTransactions(params);
+        }
+
+        await fetchTransactionSummary(params);
+      } catch (err) {
+        console.error('Failed to fetch transactions:', err);
+        showSnackbar('Failed to load transactions', 'error');
+      }
+    };
+
     fetchData();
-  }, [fetchData]);
+  }, [dateRange, filters]);
+
+  // Update context info from transactions if available
+  useEffect(() => {
+    if (transactions && transactions.length > 0) {
+      const firstTx = transactions[0];
+
+      if (storeId && firstTx.store_name && !storeInfo) {
+        setStoreInfo({ id: storeId, name: firstTx.store_name });
+      }
+      if (cashbookId && firstTx.cashbook_name && !cashbookInfo) {
+        setCashbookInfo({ id: cashbookId, name: firstTx.cashbook_name });
+      }
+    }
+  }, [transactions, storeId, cashbookId, storeInfo, cashbookInfo]);
 
   // Handlers
   const handleTabChange = (event, newValue) => {
@@ -336,8 +442,26 @@ const TransactionsDashboard = () => {
   }, []);
 
   const handleRefresh = async () => {
-    await fetchData();
-    showSnackbar('Data refreshed successfully', 'success');
+    const params = {
+      ...filters,
+      start_date: dateRange.start_date,
+      end_date: dateRange.end_date,
+    };
+
+    try {
+      if (storeId && cashbookId) {
+        await fetchTransactionsByCashbook(cashbookId, params);
+      } else if (storeId) {
+        await fetchTransactionsByStore(storeId, params);
+      } else {
+        await fetchTransactions(params);
+      }
+
+      await fetchTransactionSummary(params);
+      showSnackbar('Data refreshed successfully', 'success');
+    } catch (err) {
+      showSnackbar('Failed to refresh data', 'error');
+    }
   };
 
   const handleSearch = useCallback((query) => {
@@ -403,39 +527,41 @@ const TransactionsDashboard = () => {
   // Context info for breadcrumbs
   const getBreadcrumbs = () => {
     const crumbs = [
-      { label: 'Dashboard', path: '/', icon: <Dashboard fontSize="small" /> }
+      { label: 'Home', path: '/', icon: <Dashboard fontSize="small" /> }
     ];
-    
-    if (storeInfo) {
-      crumbs.push({ 
-        label: storeInfo.name, 
-        path: `/stores/${storeId}`, 
-        icon: <Store fontSize="small" /> 
+
+    if (storeId) {
+      crumbs.push({
+        label: storeInfo?.name || `Store ${storeId}`,
+        path: `/stores/${storeId}`,
+        icon: <Store fontSize="small" />
       });
-    } else if (storeId) {
-      crumbs.push({ 
-        label: `Store ${storeId}`, 
-        path: `/stores/${storeId}`, 
-        icon: <Store fontSize="small" /> 
+
+      if (cashbookId) {
+        crumbs.push({
+          label: 'Cashbooks',
+          path: `/stores/${storeId}/cashbooks`,
+          icon: <AccountBalance fontSize="small" />
+        });
+      }
+    }
+
+    if (cashbookId) {
+      crumbs.push({
+        label: cashbookInfo?.name || `Cashbook ${cashbookId}`,
+        path: storeId
+          ? `/stores/${storeId}/cashbooks/${cashbookId}`
+          : `/cashbooks/${cashbookId}`,
+        icon: <AccountBalance fontSize="small" />
       });
     }
-    
-    if (cashbookInfo) {
-      crumbs.push({ 
-        label: cashbookInfo.name, 
-        path: cashbookId, 
-        icon: <AccountBalance fontSize="small" /> 
-      });
-    } else if (cashbookId) {
-      crumbs.push({ 
-        label: `Cashbook ${cashbookId}`, 
-        path: cashbookId, 
-        icon: <AccountBalance fontSize="small" /> 
-      });
-    }
-    
-    crumbs.push({ label: 'Transactions', path: null, icon: <Receipt fontSize="small" /> });
-    
+
+    crumbs.push({
+      label: 'Transactions',
+      path: null,
+      icon: <Receipt fontSize="small" />
+    });
+
     return crumbs;
   };
 
@@ -463,14 +589,14 @@ const TransactionsDashboard = () => {
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       {/* Breadcrumbs */}
-      <Breadcrumbs 
-        separator="›" 
+      <Breadcrumbs
+        separator="›"
         sx={{ mb: 2 }}
         aria-label="breadcrumb"
       >
         {getBreadcrumbs().map((crumb, index) => {
           const isLast = index === getBreadcrumbs().length - 1;
-          
+
           return crumb.path && !isLast ? (
             <Link
               key={index}
@@ -478,9 +604,9 @@ const TransactionsDashboard = () => {
               color="inherit"
               component="button"
               onClick={() => navigate(crumb.path)}
-              sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
                 gap: 0.5,
                 background: 'none',
                 border: 'none',
@@ -496,12 +622,12 @@ const TransactionsDashboard = () => {
               {crumb.label}
             </Link>
           ) : (
-            <Typography 
-              key={index} 
+            <Typography
+              key={index}
               color={isLast ? 'text.primary' : 'text.secondary'}
-              sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
                 gap: 0.5,
                 fontWeight: isLast ? 600 : 400
               }}
@@ -547,7 +673,7 @@ const TransactionsDashboard = () => {
             {cashbookInfo && ` - ${cashbookInfo.name}`}
           </Typography>
         </Box>
-        
+
         {!isMobile && (
           <Stack direction="row" spacing={2}>
             <Button
@@ -592,6 +718,32 @@ const TransactionsDashboard = () => {
         </Alert>
       )}
 
+      {/* Date Range Selector */}
+      <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
+          <DateRange color="primary" />
+          <QuickDateSelector dateRange={dateRange} onChange={handleDateRangeChange} />
+          <Divider orientation="vertical" flexItem />
+          <Stack direction="row" spacing={1} flexGrow={1}>
+            <TextField
+              type="date"
+              size="small"
+              value={dateRange.start_date}
+              onChange={(e) => handleDateRangeChange({ ...dateRange, start_date: e.target.value })}
+              InputLabelProps={{ shrink: true }}
+            />
+            <Typography alignSelf="center">to</Typography>
+            <TextField
+              type="date"
+              size="small"
+              value={dateRange.end_date}
+              onChange={(e) => handleDateRangeChange({ ...dateRange, end_date: e.target.value })}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Stack>
+        </Stack>
+      </Paper>
+
       {/* Search and Filter Bar */}
       <SearchFilterBar
         onSearch={handleSearch}
@@ -599,7 +751,6 @@ const TransactionsDashboard = () => {
         onSort={() => showSnackbar('Sort functionality coming soon', 'info')}
         filtersActive={Object.keys(filters).length > 0}
         searchQuery={searchQuery}
-        onQuickDateChange={handleDateRangeChange}
       />
 
       {/* Summary Cards */}
@@ -607,11 +758,11 @@ const TransactionsDashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <SummaryCard
             title="Total Balance"
-            value={`$${summaryStats.balance.toFixed(2)}`}
-            subtitle={`${summaryStats.count} transactions`}
+            value={`$${(summaryStats.balance || 0).toFixed(2)}`}
+            subtitle={`${summaryStats.count || 0} transactions`}
             icon={AttachMoney}
             color="primary"
-            trend={{ value: 12.5, period: 'last month' }}
+            trend={summaryStats.balance > 0 ? { value: 12.5, period: 'last month' } : null}
             loading={loading}
             onClick={() => setActiveTab(0)}
           />
@@ -619,7 +770,7 @@ const TransactionsDashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <SummaryCard
             title="Total Income"
-            value={`$${summaryStats.income.toFixed(2)}`}
+            value={`$${(summaryStats.income || 0).toFixed(2)}`}
             subtitle="This period"
             icon={TrendingUp}
             color="success"
@@ -630,7 +781,7 @@ const TransactionsDashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <SummaryCard
             title="Total Expenses"
-            value={`$${summaryStats.expense.toFixed(2)}`}
+            value={`$${(summaryStats.expense || 0).toFixed(2)}`}
             subtitle="This period"
             icon={TrendingDown}
             color="error"
@@ -641,8 +792,8 @@ const TransactionsDashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <SummaryCard
             title="Completed"
-            value={summaryStats.completed}
-            subtitle={`${summaryStats.pending} pending`}
+            value={summaryStats.completed || 0}
+            subtitle={`${summaryStats.pending || 0} pending`}
             icon={Receipt}
             color="info"
             loading={loading}
@@ -659,14 +810,14 @@ const TransactionsDashboard = () => {
           sx={{ borderBottom: 1, borderColor: 'divider' }}
         >
           <Tab icon={<Dashboard />} label="Overview" iconPosition="start" />
-          <Tab 
-            icon={<Receipt />} 
+          <Tab
+            icon={<Receipt />}
             label={
               <Badge badgeContent={filteredTransactions.length} color="primary" max={999}>
                 Transactions
               </Badge>
             }
-            iconPosition="start" 
+            iconPosition="start"
           />
           <Tab icon={<Analytics />} label="Analytics" iconPosition="start" />
         </Tabs>
@@ -682,19 +833,16 @@ const TransactionsDashboard = () => {
                       storeId={storeId}
                       cashbookId={cashbookId}
                       dateRange={dateRange}
-                      detailed={false}
-                      loading={loading}
+                      detailed={true}
                     />
                   </Grid>
                   <Grid item xs={12} md={4}>
                     <CategoryChart
+                      storeId={storeId}
                       cashbookId={cashbookId}
                       dateRange={dateRange}
-                      data={[]}
-                      detailed={false}
-                      loading={loading}
-                      chartType="pie"
-                      showStats={false}
+                      detailed={true}
+                      showStats={true}
                     />
                   </Grid>
                 </Grid>
@@ -854,13 +1002,37 @@ const TransactionsDashboard = () => {
             Choose export format and options for your transactions data.
           </Typography>
           <Stack spacing={2}>
-            <Button variant="outlined" startIcon={<GridOn />} fullWidth>
+            <Button
+              variant="outlined"
+              startIcon={<GridOn />}
+              fullWidth
+              onClick={() => {
+                showSnackbar('CSV export functionality coming soon', 'info');
+                setExportDialogOpen(false);
+              }}
+            >
               Export as CSV
             </Button>
-            <Button variant="outlined" startIcon={<PictureAsPdf />} fullWidth>
+            <Button
+              variant="outlined"
+              startIcon={<PictureAsPdf />}
+              fullWidth
+              onClick={() => {
+                showSnackbar('PDF export functionality coming soon', 'info');
+                setExportDialogOpen(false);
+              }}
+            >
               Export as PDF Report
             </Button>
-            <Button variant="outlined" startIcon={<BarChart />} fullWidth>
+            <Button
+              variant="outlined"
+              startIcon={<BarChart />}
+              fullWidth
+              onClick={() => {
+                showSnackbar('Excel export functionality coming soon', 'info');
+                setExportDialogOpen(false);
+              }}
+            >
               Export for Excel
             </Button>
           </Stack>

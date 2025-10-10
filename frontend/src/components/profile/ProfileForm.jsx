@@ -84,6 +84,18 @@ const ProfileForm = ({ formData, errors, loading, onChange, onSubmit, onCancel }
             disabled={loading}
           />
         </Grid>
+        <Grid item xs={12} sm={6}>
+          <TextField
+            fullWidth
+            label="Address"
+            name="address"
+            value={formData.address || ''}
+            onChange={onChange}
+            error={!!errors.address}
+            helperText={errors.address}
+            disabled={loading}
+          />
+        </Grid>
       </Grid>
       
       <Box sx={{ mt: 4, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
