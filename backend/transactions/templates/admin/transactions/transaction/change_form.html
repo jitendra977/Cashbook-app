@@ -1,0 +1,433 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    /* Enhanced Transaction Form Styles */
+    .transaction-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .transaction-header h1 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+    }
+    
+    .transaction-header .transaction-id {
+        font-size: 14px;
+        opacity: 0.9;
+        margin-top: 5px;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .stat-card {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .stat-card .label {
+        font-size: 12px;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+    
+    .stat-card .value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #333;
+    }
+    
+    .stat-card.income .value {
+        color: #4caf50;
+    }
+    
+    .stat-card.expense .value {
+        color: #f44336;
+    }
+    
+    .stat-card.pending .value {
+        color: #ff9800;
+    }
+    
+    .stat-card .icon {
+        font-size: 30px;
+        margin-bottom: 10px;
+    }
+    
+    .alert-box {
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border-left: 4px solid;
+    }
+    
+    .alert-box.info {
+        background-color: #e3f2fd;
+        border-color: #2196f3;
+        color: #1565c0;
+    }
+    
+    .alert-box.warning {
+        background-color: #fff3e0;
+        border-color: #ff9800;
+        color: #e65100;
+    }
+    
+    .alert-box.success {
+        background-color: #e8f5e9;
+        border-color: #4caf50;
+        color: #2e7d32;
+    }
+    
+    .alert-box.error {
+        background-color: #ffebee;
+        border-color: #f44336;
+        color: #c62828;
+    }
+    
+    .fieldset-header {
+        background: #f5f5f5;
+        padding: 12px 15px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+        border-left: 4px solid #667eea;
+    }
+    
+    .fieldset-header h2 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .form-row {
+        margin-bottom: 15px;
+    }
+    
+    .form-row label {
+        font-weight: 600;
+        color: #555;
+    }
+    
+    .required:after {
+        content: " *";
+        color: #f44336;
+    }
+    
+    .help-text {
+        font-size: 12px;
+        color: #777;
+        font-style: italic;
+        margin-top: 5px;
+    }
+    
+    .balance-impact-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .balance-impact-box h3 {
+        margin: 0 0 15px 0;
+        font-size: 18px;
+    }
+    
+    .balance-impact-box .impact-details {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+    
+    .balance-impact-box .impact-item {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 10px;
+        border-radius: 6px;
+    }
+    
+    .balance-impact-box .impact-item .label {
+        font-size: 12px;
+        opacity: 0.8;
+        margin-bottom: 5px;
+    }
+    
+    .balance-impact-box .impact-item .value {
+        font-size: 20px;
+        font-weight: bold;
+    }
+    
+    .audit-info {
+        background: #fafafa;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 20px;
+    }
+    
+    .audit-info h3 {
+        margin: 0 0 15px 0;
+        font-size: 16px;
+        color: #555;
+        border-bottom: 2px solid #e0e0e0;
+        padding-bottom: 10px;
+    }
+    
+    .audit-info .audit-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+    
+    .audit-info .audit-item strong {
+        color: #666;
+        display: block;
+        margin-bottom: 5px;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+    
+    .submit-row {
+        background: white;
+        border-top: 1px solid #e0e0e0;
+        padding: 15px 20px;
+        margin: 0 -20px -20px;
+        border-radius: 0 0 8px 8px;
+    }
+    
+    .submit-row input[type="submit"] {
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    
+    .submit-row input[type="submit"]:hover {
+        background: #5568d3;
+    }
+    
+    .deletelink {
+        background: #f44336 !important;
+        color: white !important;
+    }
+    
+    .deletelink:hover {
+        background: #d32f2f !important;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .balance-impact-box .impact-details {
+            grid-template-columns: 1fr;
+        }
+        
+        .audit-info .audit-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="transaction-form-wrapper">
+    {% if original %}
+    <div class="transaction-header">
+        <h1>Edit Transaction</h1>
+        <div class="transaction-id">Transaction ID: {{ original.transaction_id }}</div>
+    </div>
+    
+    {% if original.status == 'pending' %}
+    <div class="alert-box warning">
+        <strong>⚠️ Pending Transaction</strong><br>
+        This transaction is pending and has not affected the cashbook balance yet.
+    </div>
+    {% elif original.status == 'cancelled' %}
+    <div class="alert-box error">
+        <strong>❌ Cancelled Transaction</strong><br>
+        This transaction has been cancelled and will not affect the cashbook balance.
+    </div>
+    {% else %}
+    <div class="alert-box success">
+        <strong>✓ Completed Transaction</strong><br>
+        This transaction has been completed and reflected in the cashbook balance.
+    </div>
+    {% endif %}
+    
+    <div class="stats-grid">
+        <div class="stat-card {% if original.type.nature == 'income' %}income{% else %}expense{% endif %}">
+            <div class="icon">{% if original.type.nature == 'income' %}💰{% else %}💸{% endif %}</div>
+            <div class="label">Amount</div>
+            <div class="value">${{ original.amount|floatformat:2 }}</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="icon">🏷️</div>
+            <div class="label">Type</div>
+            <div class="value" style="font-size: 16px;">{{ original.type.name }}</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="icon">🏪</div>
+            <div class="label">Store</div>
+            <div class="value" style="font-size: 16px;">{{ original.cashbook.store.name }}</div>
+        </div>
+        
+        <div class="stat-card {% if original.status == 'pending' %}pending{% endif %}">
+            <div class="icon">
+                {% if original.status == 'completed' %}✅
+                {% elif original.status == 'pending' %}⏳
+                {% else %}❌{% endif %}
+            </div>
+            <div class="label">Status</div>
+            <div class="value" style="font-size: 16px;">{{ original.get_status_display }}</div>
+        </div>
+    </div>
+    
+    {% if original.status == 'completed' %}
+    <div class="balance-impact-box">
+        <h3>💼 Balance Impact</h3>
+        <div class="impact-details">
+            <div class="impact-item">
+                <div class="label">Transaction Type</div>
+                <div class="value">{{ original.type.get_nature_display }}</div>
+            </div>
+            <div class="impact-item">
+                <div class="label">Impact</div>
+                <div class="value">
+                    {% if original.type.nature == 'income' %}
+                        +${{ original.amount|floatformat:2 }}
+                    {% else %}
+                        -${{ original.amount|floatformat:2 }}
+                    {% endif %}
+                </div>
+            </div>
+            <div class="impact-item">
+                <div class="label">Cashbook</div>
+                <div class="value" style="font-size: 16px;">{{ original.cashbook.name }}</div>
+            </div>
+            <div class="impact-item">
+                <div class="label">Effect</div>
+                <div class="value" style="font-size: 16px;">
+                    {% if original.type.nature == 'income' %}
+                        Increased Balance
+                    {% else %}
+                        Decreased Balance
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="transaction-header">
+        <h1>Create New Transaction</h1>
+    </div>
+    
+    <div class="alert-box info">
+        <strong>ℹ️ New Transaction</strong><br>
+        Fill in the details below to create a new transaction. The cashbook balance will be updated based on the transaction type and status.
+    </div>
+    {% endif %}
+    
+    {{ block.super }}
+    
+    {% if original %}
+    <div class="audit-info">
+        <h3>📋 Audit Information</h3>
+        <div class="audit-grid">
+            <div class="audit-item">
+                <strong>Created By</strong>
+                {{ original.created_by.username }}
+            </div>
+            <div class="audit-item">
+                <strong>Created At</strong>
+                {{ original.created_at|date:"Y-m-d H:i:s" }}
+            </div>
+            {% if original.updated_by %}
+            <div class="audit-item">
+                <strong>Updated By</strong>
+                {{ original.updated_by.username }}
+            </div>
+            <div class="audit-item">
+                <strong>Updated At</strong>
+                {{ original.updated_at|date:"Y-m-d H:i:s" }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block after_related_objects %}
+{% if original %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add confirmation for status changes
+        const statusField = document.querySelector('select[name="status"]');
+        if (statusField) {
+            const originalStatus = statusField.value;
+            statusField.addEventListener('change', function() {
+                const newStatus = this.value;
+                if (originalStatus === 'completed' && newStatus !== 'completed') {
+                    if (!confirm('Changing from completed status will affect the cashbook balance. Continue?')) {
+                        this.value = originalStatus;
+                    }
+                }
+                if (newStatus === 'completed' && originalStatus !== 'completed') {
+                    if (!confirm('Marking as completed will update the cashbook balance. Continue?')) {
+                        this.value = originalStatus;
+                    }
+                }
+            });
+        }
+        
+        // Add amount validation
+        const amountField = document.querySelector('input[name="amount"]');
+        if (amountField) {
+            amountField.addEventListener('change', function() {
+                const amount = parseFloat(this.value);
+                if (amount <= 0) {
+                    alert('Amount must be greater than zero.');
+                    this.value = '';
+                }
+            });
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

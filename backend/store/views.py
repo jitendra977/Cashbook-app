@@ -1,3 +1,4 @@
+# backend/store/views.py (CashbookViewSet update)
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -9,9 +10,11 @@ from .models import Store, StoreUser, Cashbook
 from .serializers import (
     StoreSerializer, 
     StoreUserSerializer, 
-    CashbookSerializer, 
+    CashbookSerializer,
+    CashbookListSerializer,  # ✅ NEW: Import list serializer
     UserSearchSerializer
 )
+
 
 class StoreViewSet(viewsets.ModelViewSet):
     serializer_class = StoreSerializer
@@ -84,21 +87,26 @@ class StoreViewSet(viewsets.ModelViewSet):
                 from rest_framework.exceptions import PermissionDenied
                 raise PermissionDenied("Only store owners and managers can update stores.")
         
-        # ✅ FIXED: Changed from perform_destroy to perform_update
         super().perform_update(serializer)
 
     @action(detail=True, methods=['get'])
     def cashbooks(self, request, pk=None):
         """Get cashbooks for a specific store (only if user has access)"""
-        store = self.get_object()  # This already applies the user filter
+        store = self.get_object()
         cashbooks = store.cashbooks.all()
-        serializer = CashbookSerializer(cashbooks, many=True)
+        
+        # ✅ Use list serializer for better performance
+        serializer = CashbookListSerializer(
+            cashbooks, 
+            many=True,
+            context={'request': request}
+        )
         return Response(serializer.data)
 
     @action(detail=True, methods=['get'])
     def users(self, request, pk=None):
         """Get users for a specific store (only if user has access)"""
-        store = self.get_object()  # This already applies the user filter
+        store = self.get_object()
         store_users = store.store_users.all()
         serializer = StoreUserSerializer(store_users, many=True)
         return Response(serializer.data)
@@ -122,6 +130,7 @@ class StoreViewSet(viewsets.ModelViewSet):
         
         serializer = UserSearchSerializer(users, many=True)
         return Response(serializer.data)
+
 
 class StoreUserViewSet(viewsets.ModelViewSet):
     serializer_class = StoreUserSerializer
@@ -251,13 +260,14 @@ class StoreUserViewSet(viewsets.ModelViewSet):
         
         super().perform_destroy(instance)
 
+
 class CashbookViewSet(viewsets.ModelViewSet):
     serializer_class = CashbookSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['store']
-    search_fields = ['name', 'store__name']
-    ordering_fields = ['name', 'created_at']
+    filterset_fields = ['store', 'is_active']
+    search_fields = ['name', 'description', 'store__name']
+    ordering_fields = ['name', 'created_at', 'current_balance']
 
     def get_queryset(self):
         """
@@ -274,6 +284,16 @@ class CashbookViewSet(viewsets.ModelViewSet):
         user_store_ids = StoreUser.objects.filter(user=user).values_list('store_id', flat=True)
         # Return cashbooks for those stores
         return Cashbook.objects.filter(store_id__in=user_store_ids).select_related('store')
+
+    def get_serializer_class(self):
+        """
+        ✅ NEW: Use different serializers for list vs detail views
+        - List: Lightweight serializer without balance_summary
+        - Detail: Full serializer with all balance information
+        """
+        if self.action == 'list':
+            return CashbookListSerializer
+        return CashbookSerializer
 
     def perform_create(self, serializer):
         """
@@ -342,12 +362,46 @@ class CashbookViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def transactions(self, request, pk=None):
         """Get transactions for a cashbook (only if user has access to the store)"""
-        # Import here to avoid circular imports
         try:
             from transactions.serializers import TransactionSerializer
-            cashbook = self.get_object()  # This already applies the user filter
+            cashbook = self.get_object()
             transactions = cashbook.transactions.all()
             serializer = TransactionSerializer(transactions, many=True)
             return Response(serializer.data)
         except ImportError:
             return Response({"error": "Transaction serializer not found"}, status=400)
+
+    @action(detail=True, methods=['post'])
+    def recalculate_balance(self, request, pk=None):
+        """
+        ✅ NEW: Manually recalculate cashbook balance
+        Only owners and managers can trigger this
+        """
+        cashbook = self.get_object()
+        user = request.user
+        
+        # Permission check
+        if not user.is_superuser:
+            store_user = StoreUser.objects.filter(
+                user=user,
+                store=cashbook.store,
+                role__in=['owner', 'manager']
+            ).first()
+            
+            if not store_user:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("You need owner or manager role to recalculate balance.")
+        
+        # Recalculate
+        old_balance = cashbook.current_balance
+        cashbook.recalculate_and_save_balance()
+        new_balance = cashbook.current_balance
+        
+        return Response({
+            'success': True,
+            'message': 'Balance recalculated successfully',
+            'old_balance': str(old_balance),
+            'new_balance': str(new_balance),
+            'difference': str(new_balance - old_balance),
+            'balance_summary': cashbook.get_balance_summary()
+        })

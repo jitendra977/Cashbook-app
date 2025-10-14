@@ -1,0 +1,59 @@
+<!-- templates/admin/base_site.html -->
+{% extends "admin/base.html" %}
+
+{% load static %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">
+        <img src="{% static 'admin/img/logo.png' %}" height="40px" />
+        Advanced Admin Panel
+    </a>
+</h1>
+{% endblock %}
+
+{% block extrastyle %}
+<style>
+:root {
+    --primary: #4f46e5;
+    --secondary: #10b981;
+    --dark: #1f2937;
+}
+
+#header {
+    background: var(--dark);
+}
+
+#branding h1 {
+    color: white;
+    font-weight: 600;
+}
+
+.module h2, .module caption, .inline-group h2 {
+    background: var(--primary);
+}
+
+a:link, a:visited {
+    color: var(--primary);
+}
+
+.button, input[type=submit], input[type=button], .submit-row input {
+    background: var(--primary);
+}
+
+.button:hover, input[type=submit]:hover, input[type=button]:hover {
+    background: var(--secondary);
+}
+
+/* Custom styling for profile images */
+.profile-image-cell {
+    text-align: center;
+}
+
+.object-tools a:link, .object-tools a:visited {
+    background: var(--secondary);
+}
+</style>
+{% endblock %}

@@ -8,6 +8,11 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework import permissions
 
+
+admin.site.site_header = "Nishana Web Creation Admin Panel"
+admin.site.site_title = "Advanced Admin Panel"
+admin.site.index_title = "Welcome to Advanced Admin Portal"
+
 schema_view = get_schema_view(
     openapi.Info(
         title="Store Management API",

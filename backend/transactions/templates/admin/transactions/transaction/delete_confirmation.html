@@ -1,0 +1,332 @@
+{% extends "admin/delete_confirmation.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .delete-warning-header {
+        background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+        color: white;
+        padding: 25px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .delete-warning-header h1 {
+        margin: 0 0 10px 0;
+        font-size: 28px;
+        font-weight: 600;
+    }
+    
+    .delete-warning-header .icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+    }
+    
+    .transaction-info-box {
+        background: white;
+        border: 2px solid #f44336;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .transaction-info-box h3 {
+        margin: 0 0 15px 0;
+        color: #f44336;
+        font-size: 18px;
+        font-weight: 600;
+        border-bottom: 2px solid #f44336;
+        padding-bottom: 10px;
+    }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .info-item {
+        padding: 10px;
+        background: #f5f5f5;
+        border-radius: 6px;
+    }
+    
+    .info-item .label {
+        font-size: 12px;
+        color: #666;
+        text-transform: uppercase;
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+    
+    .info-item .value {
+        font-size: 16px;
+        color: #333;
+        font-weight: bold;
+    }
+    
+    .warning-box {
+        background: #fff3e0;
+        border-left: 4px solid #ff9800;
+        padding: 15px;
+        border-radius: 4px;
+        margin: 20px 0;
+    }
+    
+    .warning-box h4 {
+        margin: 0 0 10px 0;
+        color: #e65100;
+        font-size: 16px;
+    }
+    
+    .warning-box ul {
+        margin: 10px 0 0 20px;
+        color: #e65100;
+    }
+    
+    .warning-box ul li {
+        margin-bottom: 5px;
+    }
+    
+    .impact-alert {
+        background: #ffebee;
+        border-left: 4px solid #f44336;
+        padding: 15px;
+        border-radius: 4px;
+        margin: 20px 0;
+    }
+    
+    .impact-alert h4 {
+        margin: 0 0 10px 0;
+        color: #c62828;
+        font-size: 16px;
+        font-weight: 600;
+    }
+    
+    .impact-details {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-top: 15px;
+    }
+    
+    .impact-details .detail-item {
+        background: white;
+        padding: 10px;
+        border-radius: 4px;
+    }
+    
+    .impact-details .detail-item strong {
+        display: block;
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 5px;
+    }
+    
+    .impact-details .detail-item .value {
+        font-size: 18px;
+        font-weight: bold;
+        color: #f44336;
+    }
+    
+    .submit-row {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 20px;
+        margin-top: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .submit-row input[type="submit"] {
+        background: #f44336;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    
+    .submit-row input[type="submit"]:hover {
+        background: #d32f2f;
+    }
+    
+    .submit-row .cancel-link {
+        background: #f5f5f5;
+        color: #333;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: background 0.2s;
+    }
+    
+    .submit-row .cancel-link:hover {
+        background: #e0e0e0;
+    }
+    
+    @media (max-width: 768px) {
+        .info-grid,
+        .impact-details {
+            grid-template-columns: 1fr;
+        }
+        
+        .submit-row {
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .submit-row input[type="submit"],
+        .submit-row .cancel-link {
+            width: 100%;
+            text-align: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="delete-confirmation-wrapper">
+    <div class="delete-warning-header">
+        <div class="icon">⚠️</div>
+        <h1>Delete Transaction</h1>
+        <p>Are you sure you want to delete this transaction? This action cannot be undone.</p>
+    </div>
+    
+    {% if object %}
+    <div class="transaction-info-box">
+        <h3>📋 Transaction Information</h3>
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="label">Transaction ID</div>
+                <div class="value">{{ object.transaction_id|slice:":8" }}...</div>
+            </div>
+            <div class="info-item">
+                <div class="label">Amount</div>
+                <div class="value" style="color: {% if object.type.nature == 'income' %}#4caf50{% else %}#f44336{% endif %};">
+                    ${{ object.amount|floatformat:2 }}
+                </div>
+            </div>
+            <div class="info-item">
+                <div class="label">Type</div>
+                <div class="value">{{ object.type.name }}</div>
+            </div>
+            <div class="info-item">
+                <div class="label">Date</div>
+                <div class="value">{{ object.transaction_date|date:"Y-m-d" }}</div>
+            </div>
+            <div class="info-item">
+                <div class="label">Cashbook</div>
+                <div class="value">{{ object.cashbook.name }}</div>
+            </div>
+            <div class="info-item">
+                <div class="label">Store</div>
+                <div class="value">{{ object.cashbook.store.name }}</div>
+            </div>
+            <div class="info-item">
+                <div class="label">Status</div>
+                <div class="value">{{ object.get_status_display }}</div>
+            </div>
+            <div class="info-item">
+                <div class="label">Category</div>
+                <div class="value">{{ object.category|default:"N/A" }}</div>
+            </div>
+        </div>
+        
+        {% if object.description %}
+        <div class="info-item" style="grid-column: 1 / -1;">
+            <div class="label">Description</div>
+            <div class="value" style="font-size: 14px;">{{ object.description }}</div>
+        </div>
+        {% endif %}
+    </div>
+    
+    {% if object.status == 'completed' %}
+    <div class="impact-alert">
+        <h4>⚠️ Balance Impact Warning</h4>
+        <p>This transaction is <strong>COMPLETED</strong> and has already affected the cashbook balance.</p>
+        <p>Deleting this transaction will:</p>
+        <div class="impact-details">
+            <div class="detail-item">
+                <strong>Current Impact</strong>
+                <div class="value">
+                    {% if object.type.nature == 'income' %}
+                        +${{ object.amount|floatformat:2 }}
+                    {% else %}
+                        -${{ object.amount|floatformat:2 }}
+                    {% endif %}
+                </div>
+            </div>
+            <div class="detail-item">
+                <strong>After Deletion</strong>
+                <div class="value">
+                    {% if object.type.nature == 'income' %}
+                        Balance will decrease
+                    {% else %}
+                        Balance will increase
+                    {% endif %}
+                </div>
+            </div>
+            <div class="detail-item">
+                <strong>Affected Cashbook</strong>
+                <div class="value" style="font-size: 14px;">{{ object.cashbook.name }}</div>
+            </div>
+            <div class="detail-item">
+                <strong>Affected Store</strong>
+                <div class="value" style="font-size: 14px;">{{ object.cashbook.store.name }}</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="warning-box">
+        <h4>⚠️ Important Considerations</h4>
+        <ul>
+            <li>This action is <strong>permanent</strong> and cannot be undone</li>
+            <li>The transaction will be permanently removed from the system</li>
+            {% if object.status == 'completed' %}
+            <li>The cashbook balance will be automatically recalculated</li>
+            <li>Daily balance records will be updated</li>
+            {% endif %}
+            <li>Historical reports may be affected</li>
+            <li>Audit trails will show this deletion</li>
+        </ul>
+        
+        <p style="margin-top: 15px; font-weight: 600;">
+            💡 <strong>Alternative:</strong> Instead of deleting, consider marking the transaction as "Cancelled" to preserve the audit trail.
+        </p>
+    </div>
+    {% endif %}
+    
+    {{ block.super }}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add confirmation dialog
+        const deleteForm = document.querySelector('form');
+        if (deleteForm) {
+            deleteForm.addEventListener('submit', function(e) {
+                const confirmed = confirm(
+                    'Are you absolutely sure you want to delete this transaction?\n\n' +
+                    'This action cannot be undone and will affect the cashbook balance.\n\n' +
+                    'Click OK to proceed with deletion or Cancel to go back.'
+                );
+                
+                if (!confirmed) {
+                    e.preventDefault();
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,317 @@
+{% extends "admin/actions.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .action-confirmation-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 25px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .action-confirmation-header h1 {
+        margin: 0 0 10px 0;
+        font-size: 28px;
+        font-weight: 600;
+    }
+    
+    .action-confirmation-header .icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+    }
+    
+    .action-summary {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .action-summary h3 {
+        margin: 0 0 15px 0;
+        font-size: 18px;
+        color: #333;
+        border-bottom: 2px solid #667eea;
+        padding-bottom: 10px;
+    }
+    
+    .summary-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+    }
+    
+    .stat-box {
+        background: #f5f5f5;
+        padding: 15px;
+        border-radius: 6px;
+        text-align: center;
+    }
+    
+    .stat-box .label {
+        font-size: 12px;
+        color: #666;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+    
+    .stat-box .value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #667eea;
+    }
+    
+    .selected-items {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .selected-items h3 {
+        margin: 0 0 15px 0;
+        font-size: 18px;
+        color: #333;
+        border-bottom: 2px solid #667eea;
+        padding-bottom: 10px;
+        position: sticky;
+        top: 0;
+        background: white;
+        z-index: 10;
+    }
+    
+    .item-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .item-list li {
+        padding: 12px;
+        border-bottom: 1px solid #f0f0f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background 0.2s;
+    }
+    
+    .item-list li:hover {
+        background: #f9f9f9;
+    }
+    
+    .item-list li:last-child {
+        border-bottom: none;
+    }
+    
+    .item-info {
+        flex: 1;
+    }
+    
+    .item-info .item-title {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 5px;
+    }
+    
+    .item-info .item-details {
+        font-size: 12px;
+        color: #666;
+    }
+    
+    .item-amount {
+        font-size: 16px;
+        font-weight: bold;
+        margin-left: 15px;
+    }
+    
+    .item-amount.income {
+        color: #4caf50;
+    }
+    
+    .item-amount.expense {
+        color: #f44336;
+    }
+    
+    .warning-box {
+        background: #fff3e0;
+        border-left: 4px solid #ff9800;
+        padding: 15px;
+        border-radius: 4px;
+        margin: 20px 0;
+    }
+    
+    .warning-box h4 {
+        margin: 0 0 10px 0;
+        color: #e65100;
+        font-size: 16px;
+    }
+    
+    .warning-box ul {
+        margin: 10px 0 0 20px;
+        color: #e65100;
+    }
+    
+    .action-buttons {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .action-buttons button {
+        flex: 1;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .action-buttons .confirm-btn {
+        background: #667eea;
+        color: white;
+    }
+    
+    .action-buttons .confirm-btn:hover {
+        background: #5568d3;
+        transform: translateY(-1px);
+    }
+    
+    .action-buttons .cancel-btn {
+        background: #f5f5f5;
+        color: #333;
+    }
+    
+    .action-buttons .cancel-btn:hover {
+        background: #e0e0e0;
+    }
+    
+    @media (max-width: 768px) {
+        .summary-stats {
+            grid-template-columns: 1fr;
+        }
+        
+        .action-buttons {
+            flex-direction: column-reverse;
+        }
+        
+        .action-buttons button {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="action-confirmation-wrapper">
+    <div class="action-confirmation-header">
+        <div class="icon">⚡</div>
+        <h1>Confirm Action: {{ action_name }}</h1>
+        <p>Review the selected items before proceeding</p>
+    </div>
+    
+    <div class="action-summary">
+        <h3>📊 Action Summary</h3>
+        <p>You are about to perform the following action on the selected transactions:</p>
+        <p style="font-size: 18px; font-weight: 600; color: #667eea; margin: 15px 0;">
+            {{ action_name }}
+        </p>
+        
+        <div class="summary-stats">
+            <div class="stat-box">
+                <div class="label">Selected Items</div>
+                <div class="value">{{ queryset.count }}</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="selected-items">
+        <h3>📋 Selected Transactions ({{ queryset.count }})</h3>
+        <ul class="item-list">
+            {% for obj in queryset %}
+            <li>
+                <div class="item-info">
+                    <div class="item-title">
+                        {{ obj.transaction_id|slice:":8" }}... - {{ obj.type.name }}
+                    </div>
+                    <div class="item-details">
+                        {{ obj.cashbook.name }} | {{ obj.transaction_date|date:"Y-m-d" }} | Status: {{ obj.get_status_display }}
+                    </div>
+                </div>
+                <div class="item-amount {% if obj.type.nature == 'income' %}income{% else %}expense{% endif %}">
+                    {% if obj.type.nature == 'income' %}+{% else %}-{% endif %}${{ obj.amount|floatformat:2 }}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    
+    {% if action_name == "Mark selected as completed" %}
+    <div class="warning-box">
+        <h4>⚠️ Important Notice</h4>
+        <ul>
+            <li>Marking transactions as completed will update the cashbook balances</li>
+            <li>Income transactions will increase the balance</li>
+            <li>Expense transactions will decrease the balance</li>
+            <li>This action can be reversed by changing the status back</li>
+        </ul>
+    </div>
+    {% elif action_name == "Mark selected as cancelled" %}
+    <div class="warning-box">
+        <h4>⚠️ Important Notice</h4>
+        <ul>
+            <li>Cancelling completed transactions will reverse their balance impact</li>
+            <li>Cancelled transactions will not affect cashbook balances</li>
+            <li>This action can be undone by changing the status</li>
+        </ul>
+    </div>
+    {% elif action_name == "Recalculate affected cashbook balances" %}
+    <div class="warning-box">
+        <h4>⚠️ Important Notice</h4>
+        <ul>
+            <li>This will recalculate balances for all cashbooks affected by selected transactions</li>
+            <li>All completed transactions will be included in the calculation</li>
+            <li>This may take a few moments to complete</li>
+        </ul>
+    </div>
+    {% endif %}
+    
+    {{ block.super }}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Enhance the confirmation
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+            form.addEventListener('submit', function(e) {
+                const action = '{{ action_name }}';
+                const count = {{ queryset.count }};
+                
+                const message = `Are you sure you want to perform this action on ${count} transaction(s)?\n\nAction: ${action}`;
+                
+                if (!confirm(message)) {
+                    e.preventDefault();
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

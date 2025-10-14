@@ -1,0 +1,454 @@
+{% extends "admin/change_list.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    /* Enhanced Transaction List Styles */
+    .transaction-list-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 25px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .transaction-list-header h1 {
+        margin: 0 0 10px 0;
+        font-size: 28px;
+        font-weight: 600;
+    }
+    
+    .transaction-list-header .subtitle {
+        font-size: 14px;
+        opacity: 0.9;
+    }
+    
+    .dashboard-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 25px;
+    }
+    
+    .dashboard-card {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s, box-shadow 0.2s;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .dashboard-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+    }
+    
+    .dashboard-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .dashboard-card.income::before {
+        background: #4caf50;
+    }
+    
+    .dashboard-card.expense::before {
+        background: #f44336;
+    }
+    
+    .dashboard-card.pending::before {
+        background: #ff9800;
+    }
+    
+    .dashboard-card .icon {
+        font-size: 36px;
+        margin-bottom: 10px;
+    }
+    
+    .dashboard-card .label {
+        font-size: 13px;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+    
+    .dashboard-card .value {
+        font-size: 28px;
+        font-weight: bold;
+        color: #333;
+    }
+    
+    .dashboard-card.income .value {
+        color: #4caf50;
+    }
+    
+    .dashboard-card.expense .value {
+        color: #f44336;
+    }
+    
+    .dashboard-card.pending .value {
+        color: #ff9800;
+    }
+    
+    .dashboard-card .subtext {
+        font-size: 12px;
+        color: #999;
+        margin-top: 5px;
+    }
+    
+    .quick-filters {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .quick-filters h3 {
+        margin: 0 0 15px 0;
+        font-size: 16px;
+        color: #333;
+        font-weight: 600;
+    }
+    
+    .filter-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .filter-btn {
+        background: #f5f5f5;
+        border: 1px solid #e0e0e0;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #555;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .filter-btn:hover {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+        transform: translateY(-1px);
+    }
+    
+    .filter-btn.active {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+    }
+    
+    .filter-btn.income:hover,
+    .filter-btn.income.active {
+        background: #4caf50;
+        border-color: #4caf50;
+    }
+    
+    .filter-btn.expense:hover,
+    .filter-btn.expense.active {
+        background: #f44336;
+        border-color: #f44336;
+    }
+    
+    .filter-btn.pending:hover,
+    .filter-btn.pending.active {
+        background: #ff9800;
+        border-color: #ff9800;
+    }
+    
+    /* Enhanced Table Styles */
+    #result_list {
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    #result_list thead th {
+        background: #f5f5f5;
+        color: #333;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 12px;
+        letter-spacing: 0.5px;
+        padding: 15px 10px;
+        border-bottom: 2px solid #e0e0e0;
+    }
+    
+    #result_list tbody tr {
+        transition: background 0.2s;
+    }
+    
+    #result_list tbody tr:hover {
+        background: #f9f9f9;
+    }
+    
+    #result_list tbody td {
+        padding: 12px 10px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    /* Action Row Styles */
+    .actions {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .actions select {
+        padding: 8px 12px;
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+    
+    .actions button {
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    
+    .actions button:hover {
+        background: #5568d3;
+    }
+    
+    /* Pagination Styles */
+    .pagination {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 20px;
+    }
+    
+    .pagination a {
+        color: #667eea;
+        text-decoration: none;
+        padding: 5px 10px;
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+    
+    .pagination a:hover {
+        background: #f5f5f5;
+    }
+    
+    /* Search Bar Enhancement */
+    #searchbar {
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 10px 15px;
+        font-size: 14px;
+        transition: border-color 0.2s;
+        width: 300px;
+    }
+    
+    #searchbar:focus {
+        border-color: #667eea;
+        outline: none;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .dashboard-stats {
+            grid-template-columns: 1fr;
+        }
+        
+        .filter-buttons {
+            flex-direction: column;
+        }
+        
+        .filter-btn {
+            text-align: center;
+        }
+    }
+    
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        margin: 20px 0;
+    }
+    
+    .empty-state .icon {
+        font-size: 64px;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+    
+    .empty-state h3 {
+        font-size: 20px;
+        color: #333;
+        margin-bottom: 10px;
+    }
+    
+    .empty-state p {
+        color: #666;
+        font-size: 14px;
+    }
+</style>
+{% endblock %}
+
+{% block content_title %}
+<div class="transaction-list-header">
+    <h1>💰 Transaction Management</h1>
+    <div class="subtitle">Manage and track all financial transactions</div>
+</div>
+{% endblock %}
+
+{% block search %}
+<div class="dashboard-stats">
+    <div class="dashboard-card income">
+        <div class="icon">💵</div>
+        <div class="label">Total Income</div>
+        <div class="value" id="total-income">$0.00</div>
+        <div class="subtext">All completed transactions</div>
+    </div>
+    
+    <div class="dashboard-card expense">
+        <div class="icon">💸</div>
+        <div class="label">Total Expenses</div>
+        <div class="value" id="total-expense">$0.00</div>
+        <div class="subtext">All completed transactions</div>
+    </div>
+    
+    <div class="dashboard-card">
+        <div class="icon">📊</div>
+        <div class="label">Net Balance</div>
+        <div class="value" id="net-balance">$0.00</div>
+        <div class="subtext">Income - Expenses</div>
+    </div>
+    
+    <div class="dashboard-card pending">
+        <div class="icon">⏳</div>
+        <div class="label">Pending</div>
+        <div class="value" id="pending-count">0</div>
+        <div class="subtext">Awaiting completion</div>
+    </div>
+</div>
+<div class="quick-filters">
+    <h3>🔍 Quick Filters</h3>
+    <div class="filter-buttons">
+        <!-- Store Filters -->
+        <a href="?" class="filter-btn">🏪 All Stores</a>
+        {% for store in stores %}
+        <a href="?store={{ store.id }}" class="filter-btn">🏪 {{ store.name }}</a>
+        {% endfor %}
+        
+        <!-- Cashbook Filters -->
+        <a href="?" class="filter-btn">💰 All Cashbooks</a>
+        {% for cashbook in cashbooks %}
+        <a href="?cashbook={{ cashbook.id }}" class="filter-btn">💰 {{ cashbook.name }}</a>
+        {% endfor %}
+        
+        <!-- Status Filters -->
+        <a href="?status=completed" class="filter-btn">✅ Completed</a>
+        <a href="?status=pending" class="filter-btn pending">⏳ Pending</a>
+        <a href="?status=cancelled" class="filter-btn">❌ Cancelled</a>
+        
+        <!-- Type Filters -->
+        <a href="?type__nature=income" class="filter-btn income">💰 Income</a>
+        <a href="?type__nature=expense" class="filter-btn expense">💸 Expenses</a>
+        
+        <!-- Clear All -->
+        <a href="?" class="filter-btn">🔄 Clear All</a>
+    </div>
+</div>
+
+{{ block.super }}
+{% endblock %}
+
+{% block result_list %}
+{% if cl.result_count %}
+    {{ block.super }}
+{% else %}
+    <div class="empty-state">
+        <div class="icon">📭</div>
+        <h3>No Transactions Found</h3>
+        <p>There are no transactions matching your search criteria. Try adjusting your filters or create a new transaction.</p>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block footer %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Fetch and display summary statistics
+        fetch('/admin/transactions/transaction/stats/', {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.total_income !== undefined) {
+                document.getElementById('total-income').textContent = 
+                    '$' + parseFloat(data.total_income).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            }
+            if (data.total_expense !== undefined) {
+                document.getElementById('total-expense').textContent = 
+                    '$' + parseFloat(data.total_expense).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            }
+            if (data.net_balance !== undefined) {
+                const netBalance = parseFloat(data.net_balance);
+                const netElement = document.getElementById('net-balance');
+                netElement.textContent = 
+                    '$' + Math.abs(netBalance).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                netElement.style.color = netBalance >= 0 ? '#4caf50' : '#f44336';
+            }
+            if (data.pending_count !== undefined) {
+                document.getElementById('pending-count').textContent = data.pending_count;
+            }
+        })
+        .catch(error => console.error('Error fetching stats:', error));
+        
+        // Highlight active filter
+        const urlParams = new URLSearchParams(window.location.search);
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            const btnUrl = new URL(btn.href);
+            const btnParams = new URLSearchParams(btnUrl.search);
+            let isActive = true;
+            
+            for (const [key, value] of btnParams.entries()) {
+                if (urlParams.get(key) !== value) {
+                    isActive = false;
+                    break;
+                }
+            }
+            
+            if (isActive && btnParams.toString() === urlParams.toString()) {
+                btn.classList.add('active');
+            }
+        });
+    });
+</script>
+{{ block.super }}
+{% endblock %}
