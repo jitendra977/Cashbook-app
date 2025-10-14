@@ -12,7 +12,10 @@ class StoreAdmin(admin.ModelAdmin):
         'name',
         'address',
         'contact_number',
+        'email',
         'store_owner', 
+        'website',
+        'description',
         'created_at',
         'updated_at'
     )

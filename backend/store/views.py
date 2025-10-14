@@ -84,7 +84,8 @@ class StoreViewSet(viewsets.ModelViewSet):
                 from rest_framework.exceptions import PermissionDenied
                 raise PermissionDenied("Only store owners and managers can update stores.")
         
-        super().perform_destroy(instance)
+        # ✅ FIXED: Changed from perform_destroy to perform_update
+        super().perform_update(serializer)
 
     @action(detail=True, methods=['get'])
     def cashbooks(self, request, pk=None):

@@ -1,11 +1,13 @@
 # backend/store/models.py
 from django.db import models
 from accounts.models import User
-
 class Store(models.Model):
     name = models.CharField(max_length=255, unique=True)
     address = models.CharField(max_length=255, blank=True, null=True)
     contact_number = models.CharField(max_length=20, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)  # ✅ Added email
+    website = models.CharField(max_length=255, blank=True, null=True)
+    description = models.CharField(max_length=255, blank=True, null=True)  # ✅ Added description
     is_active = models.BooleanField(default=True)
 
     store_owner = models.ForeignKey(

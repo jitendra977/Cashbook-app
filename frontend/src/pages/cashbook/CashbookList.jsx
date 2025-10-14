@@ -6,17 +6,16 @@ import {
   Alert, CircularProgress, Card, CardContent, Grid,
   Chip, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, Snackbar, Tooltip, Fab, alpha, useTheme,
-  Breadcrumbs, Link, Divider, Menu, MenuItem, Badge,
-  Tabs, Tab, FormControlLabel, Switch, Avatar, AvatarGroup,
-  InputAdornment, CardActions, Zoom, Fade
+  Breadcrumbs, Link, Divider, Menu, MenuItem,
+  FormControlLabel, Switch, Zoom, Fade
 } from '@mui/material';
 import {
-  Add, Edit, Delete, Visibility, ReceiptLong,
+  Add, Edit, Delete, ReceiptLong,
   Search, CalendarToday, AccountBalance, Store,
-  NavigateNext, MoreVert, FilterList, Sort,
-  Download, Upload, Share, Archive, Refresh,
+  NavigateNext, MoreVert, Sort,
+  Download, Refresh,
   TrendingUp, TrendingDown, AttachMoney,
-  People, Security, Speed, Analytics
+  People, Analytics, Speed
 } from '@mui/icons-material';
 import { useStore } from '../../context/StoreContext';
 
@@ -43,15 +42,24 @@ const CashbookCard = ({
     setMenuAnchor(null);
   };
 
-  const getPerformanceColor = (balance) => {
-    if (balance > 1000) return theme.palette.success.main;
-    if (balance > 0) return theme.palette.warning.main;
+  // Calculate balance safely
+  const balance = cashbook.current_balance !== undefined && cashbook.current_balance !== null
+    ? parseFloat(cashbook.current_balance)
+    : cashbook.initial_balance !== undefined && cashbook.initial_balance !== null
+    ? parseFloat(cashbook.initial_balance)
+    : 0;
+
+  const transactionCount = cashbook.transaction_count || 0;
+
+  const getPerformanceColor = (bal) => {
+    if (bal > 1000) return theme.palette.success.main;
+    if (bal > 0) return theme.palette.warning.main;
     return theme.palette.error.main;
   };
 
-  const getPerformanceIcon = (balance) => {
-    if (balance > 1000) return <TrendingUp sx={{ fontSize: 16 }} />;
-    if (balance > 0) return <TrendingUp sx={{ fontSize: 16, color: theme.palette.warning.main }} />;
+  const getPerformanceIcon = (bal) => {
+    if (bal > 1000) return <TrendingUp sx={{ fontSize: 16 }} />;
+    if (bal > 0) return <TrendingUp sx={{ fontSize: 16, color: theme.palette.warning.main }} />;
     return <TrendingDown sx={{ fontSize: 16 }} />;
   };
 
@@ -94,7 +102,7 @@ const CashbookCard = ({
           }}
         >
           <Chip
-            icon={getPerformanceIcon(cashbook.balance)}
+            icon={getPerformanceIcon(balance)}
             label={cashbook.is_active ? "Active" : "Inactive"}
             color={cashbook.is_active ? "success" : "default"}
             size="small"
@@ -147,6 +155,17 @@ const CashbookCard = ({
             </IconButton>
           </Box>
 
+          {/* Description */}
+          {cashbook.description && (
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ mb: 2, fontStyle: 'italic' }}
+            >
+              {cashbook.description}
+            </Typography>
+          )}
+
           {/* Quick Stats */}
           <Grid container spacing={2} sx={{ mb: 2 }}>
             <Grid item xs={6}>
@@ -164,7 +183,7 @@ const CashbookCard = ({
                   Transactions
                 </Typography>
                 <Typography variant="h6" color="primary.main" sx={{ fontWeight: 700 }}>
-                  {cashbook.transaction_count ?? 0}
+                  {transactionCount}
                 </Typography>
               </Paper>
             </Grid>
@@ -175,8 +194,8 @@ const CashbookCard = ({
                   p: 1.5,
                   textAlign: 'center',
                   borderRadius: 2,
-                  backgroundColor: alpha(getPerformanceColor(cashbook.balance), 0.02),
-                  borderColor: alpha(getPerformanceColor(cashbook.balance), 0.1)
+                  backgroundColor: alpha(getPerformanceColor(balance), 0.02),
+                  borderColor: alpha(getPerformanceColor(balance), 0.1)
                 }}
               >
                 <Typography variant="caption" color="text.secondary" display="block">
@@ -186,14 +205,23 @@ const CashbookCard = ({
                   variant="h6" 
                   sx={{ 
                     fontWeight: 700,
-                    color: getPerformanceColor(cashbook.balance)
+                    color: getPerformanceColor(balance)
                   }}
                 >
-                  ${typeof cashbook.balance === "number" ? cashbook.balance.toFixed(2) : "0.00"}
+                  ${balance.toFixed(2)}
                 </Typography>
               </Paper>
             </Grid>
           </Grid>
+
+          {/* Initial Balance Info */}
+          {cashbook.initial_balance !== undefined && cashbook.initial_balance !== null && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="caption" color="text.secondary" display="block">
+                Initial Balance: ${parseFloat(cashbook.initial_balance).toFixed(2)}
+              </Typography>
+            </Box>
+          )}
 
           {/* Metadata */}
           <Box sx={{ mb: 2 }}>
@@ -218,7 +246,7 @@ const CashbookCard = ({
                 Storage Usage
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {Math.min((cashbook.transaction_count / 1000) * 100, 100).toFixed(1)}%
+                {Math.min((transactionCount / 1000) * 100, 100).toFixed(1)}%
               </Typography>
             </Box>
             <Box
@@ -232,7 +260,7 @@ const CashbookCard = ({
               <Box
                 sx={{
                   height: '100%',
-                  width: `${Math.min((cashbook.transaction_count / 1000) * 100, 100)}%`,
+                  width: `${Math.min((transactionCount / 1000) * 100, 100)}%`,
                   background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
                   borderRadius: 2,
                   transition: 'width 0.5s ease-in-out'
@@ -242,7 +270,7 @@ const CashbookCard = ({
           </Box>
         </CardContent>
 
-        <CardActions sx={{ p: 2, pt: 0 }}>
+        <Box sx={{ p: 2, pt: 0 }}>
           <Button
             fullWidth
             variant="contained"
@@ -261,7 +289,7 @@ const CashbookCard = ({
           >
             Manage Transactions
           </Button>
-        </CardActions>
+        </Box>
 
         {/* Context Menu */}
         <Menu
@@ -274,7 +302,7 @@ const CashbookCard = ({
             <Edit sx={{ mr: 1, fontSize: 20 }} /> Edit Cashbook
           </MenuItem>
           <MenuItem onClick={() => { onShare(cashbook); handleMenuClose(); }}>
-            <Share sx={{ mr: 1, fontSize: 20 }} /> Share Access
+            <AttachMoney sx={{ mr: 1, fontSize: 20 }} /> Share Access
           </MenuItem>
           <MenuItem onClick={() => { onExport(cashbook); handleMenuClose(); }}>
             <Download sx={{ mr: 1, fontSize: 20 }} /> Export Data
@@ -307,7 +335,7 @@ const CashbookList = () => {
     fetchStoreCashbooks,
     createCashbook,
     updateCashbook,
-    storeUsers,
+    fetchStoreUsers,
     deleteCashbook,
     clearError
   } = useStore();
@@ -316,17 +344,37 @@ const CashbookList = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCashbook, setSelectedCashbook] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState(0);
   const [sortBy, setSortBy] = useState('name');
   const [filterActive, setFilterActive] = useState(true);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [storeUserCount, setStoreUserCount] = useState(0);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    currency: 'USD'
+    initial_balance: '0.00'
   });
 
-  // Enhanced filtering and sorting
+  // Fetch store users count
+  useEffect(() => {
+    if (storeId) {
+      fetchStore(storeId);
+      fetchStoreCashbooks(storeId);
+      
+      // Fetch store users if function exists
+      if (fetchStoreUsers) {
+        fetchStoreUsers(storeId).then(users => {
+          if (users && users.length !== undefined) {
+            setStoreUserCount(users.length);
+          }
+        }).catch(err => {
+          console.error('Error fetching store users:', err);
+        });
+      }
+    }
+  }, [storeId, fetchStore, fetchStoreCashbooks, fetchStoreUsers]);
+
+  const currentStoreData = currentStore || stores.find(store => store.id === parseInt(storeId)) || { name: "Unknown Store" };
+
+  // Enhanced filtering and sorting with correct balance calculation
   const filteredCashbooks = useMemo(() => {
     let filtered = cashbooks.filter(cashbook => {
       const matchesSearch = cashbook.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -335,13 +383,24 @@ const CashbookList = () => {
       return matchesSearch && matchesActive;
     });
 
-    // Sorting
+    // Sorting with correct balance handling
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'name':
           return a.name.localeCompare(b.name);
-        case 'balance':
-          return (b.balance || 0) - (a.balance || 0);
+        case 'balance': {
+          const balanceA = a.current_balance !== undefined && a.current_balance !== null
+            ? parseFloat(a.current_balance)
+            : a.initial_balance !== undefined && a.initial_balance !== null
+            ? parseFloat(a.initial_balance)
+            : 0;
+          const balanceB = b.current_balance !== undefined && b.current_balance !== null
+            ? parseFloat(b.current_balance)
+            : b.initial_balance !== undefined && b.initial_balance !== null
+            ? parseFloat(b.initial_balance)
+            : 0;
+          return balanceB - balanceA;
+        }
         case 'transactions':
           return (b.transaction_count || 0) - (a.transaction_count || 0);
         case 'recent':
@@ -354,14 +413,22 @@ const CashbookList = () => {
     return filtered;
   }, [cashbooks, searchTerm, sortBy, filterActive]);
 
-  // Enhanced statistics
+  // Enhanced statistics with correct calculations
   const statistics = useMemo(() => {
     const totalTransactions = filteredCashbooks.reduce(
-      (sum, cb) => sum + (cb.transaction_count ?? 0), 0
+      (sum, cb) => sum + (cb.transaction_count || 0), 0
     );
-    const totalBalance = filteredCashbooks.reduce(
-      (sum, cb) => sum + (typeof cb.balance === "number" ? cb.balance : 0), 0
-    );
+    
+    // Calculate total balance correctly
+    const totalBalance = filteredCashbooks.reduce((sum, cb) => {
+      const balance = cb.current_balance !== undefined && cb.current_balance !== null
+        ? parseFloat(cb.current_balance)
+        : cb.initial_balance !== undefined && cb.initial_balance !== null
+        ? parseFloat(cb.initial_balance)
+        : 0;
+      return sum + balance;
+    }, 0);
+    
     const activeCashbooks = filteredCashbooks.filter(cb => cb.is_active).length;
     const averageBalance = filteredCashbooks.length > 0 ? totalBalance / filteredCashbooks.length : 0;
 
@@ -374,26 +441,31 @@ const CashbookList = () => {
     };
   }, [filteredCashbooks]);
 
-  useEffect(() => {
-    if (storeId) {
-      fetchStore(storeId);
-      fetchStoreCashbooks(storeId);
-    }
-  }, [storeId, fetchStore, fetchStoreCashbooks]);
-
-  const currentStoreData = currentStore || stores.find(store => store.id === parseInt(storeId)) || { name: "Unknown Store" };
-
   const handleSaveCashbook = async () => {
     try {
       clearError();
+      
+      const cashbookData = {
+        name: formData.name.trim(),
+        store: parseInt(storeId),
+        is_active: true
+      };
+
+      // Add optional fields
+      if (formData.description && formData.description.trim()) {
+        cashbookData.description = formData.description.trim();
+      }
+      
+      if (formData.initial_balance) {
+        cashbookData.initial_balance = parseFloat(formData.initial_balance) || 0;
+        cashbookData.current_balance = parseFloat(formData.initial_balance) || 0;
+      }
+
       if (selectedCashbook) {
-        await updateCashbook(selectedCashbook.id, formData);
+        await updateCashbook(selectedCashbook.id, cashbookData);
         setSuccess('Cashbook updated successfully!');
       } else {
-        await createCashbook({
-          ...formData,
-          store: parseInt(storeId)
-        });
+        await createCashbook(cashbookData);
         setSuccess('Cashbook created successfully!');
       }
       closeDialog();
@@ -417,13 +489,11 @@ const CashbookList = () => {
   };
 
   const handleShareCashbook = (cashbook) => {
-    // Implement share functionality
     console.log('Sharing cashbook:', cashbook);
     setSuccess(`Share options for "${cashbook.name}"`);
   };
 
   const handleExportCashbook = (cashbook) => {
-    // Implement export functionality
     console.log('Exporting cashbook:', cashbook);
     setSuccess(`Exporting data for "${cashbook.name}"`);
   };
@@ -433,21 +503,23 @@ const CashbookList = () => {
     setFormData({
       name: cashbook.name || '',
       description: cashbook.description || '',
-      currency: cashbook.currency || 'USD'
+      initial_balance: cashbook.initial_balance !== undefined && cashbook.initial_balance !== null
+        ? parseFloat(cashbook.initial_balance).toFixed(2)
+        : '0.00'
     });
     setDialogOpen(true);
   };
 
   const openCreate = () => {
     setSelectedCashbook(null);
-    setFormData({ name: '', description: '', currency: 'USD' });
+    setFormData({ name: '', description: '', initial_balance: '0.00' });
     setDialogOpen(true);
   };
 
   const closeDialog = () => {
     setDialogOpen(false);
     setSelectedCashbook(null);
-    setFormData({ name: '', description: '', currency: 'USD' });
+    setFormData({ name: '', description: '', initial_balance: '0.00' });
   };
 
   const handleViewTransactions = (cashbookId) => {
@@ -456,6 +528,13 @@ const CashbookList = () => {
 
   const handleRefresh = () => {
     fetchStoreCashbooks(storeId);
+    if (fetchStoreUsers) {
+      fetchStoreUsers(storeId).then(users => {
+        if (users && users.length !== undefined) {
+          setStoreUserCount(users.length);
+        }
+      });
+    }
     setSuccess('Cashbooks refreshed successfully!');
   };
 
@@ -545,7 +624,7 @@ const CashbookList = () => {
               />
               <Chip 
                 icon={<People />} 
-                label={`${storeUsers?.length || 0} Team Members`} 
+                label={`${storeUserCount} Team Members`} 
                 variant="filled"
                 sx={{ backgroundColor: alpha(theme.palette.info.main, 0.1) }}
               />
@@ -680,6 +759,7 @@ const CashbookList = () => {
             placeholder="Search cashbooks..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            size="small"
             sx={{ width: 300 }}
             InputProps={{
               startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />
@@ -689,10 +769,16 @@ const CashbookList = () => {
           <Tooltip title="Sort By">
             <Button
               startIcon={<Sort />}
-              onClick={() => setSortBy(sortBy === 'name' ? 'balance' : 'name')}
+              onClick={() => {
+                const sortOptions = ['name', 'balance', 'transactions', 'recent'];
+                const currentIndex = sortOptions.indexOf(sortBy);
+                const nextIndex = (currentIndex + 1) % sortOptions.length;
+                setSortBy(sortOptions[nextIndex]);
+              }}
               variant="outlined"
+              size="small"
             >
-              Sort: {sortBy === 'name' ? 'Name' : sortBy === 'balance' ? 'Balance' : 'Transactions'}
+              Sort: {sortBy === 'name' ? 'Name' : sortBy === 'balance' ? 'Balance' : sortBy === 'transactions' ? 'Transactions' : 'Recent'}
             </Button>
           </Tooltip>
 
@@ -827,7 +913,8 @@ const CashbookList = () => {
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             margin="normal"
             placeholder="Enter cashbook name..."
-            helperText="Give your cashbook a descriptive name"
+            helperText="Required: Give your cashbook a descriptive name"
+            required
             sx={{ mb: 2 }}
           />
           
@@ -841,6 +928,26 @@ const CashbookList = () => {
             multiline
             rows={3}
             helperText="Optional: Add a description for better organization"
+            sx={{ mb: 2 }}
+          />
+
+          <TextField
+            fullWidth
+            label="Initial Balance"
+            value={formData.initial_balance}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Allow only numbers and decimal point
+              if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+                setFormData({ ...formData, initial_balance: value });
+              }
+            }}
+            margin="normal"
+            placeholder="0.00"
+            helperText="Optional: Starting balance for this cashbook"
+            InputProps={{
+              startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>
+            }}
           />
         </DialogContent>
         
@@ -858,7 +965,7 @@ const CashbookList = () => {
               px: 3
             }}
           >
-            {selectedCashbook ? 'Update Cashbook' : 'Create Cashbook'}
+            {loading ? 'Saving...' : selectedCashbook ? 'Update Cashbook' : 'Create Cashbook'}
           </Button>
         </DialogActions>
       </Dialog>
