@@ -635,14 +635,64 @@ export const TransactionsProvider = ({ children }) => {
   }, []);
 
   const exportTransactions = useCallback(async (params = {}) => {
-    try {
-      const data = await transactionsAPI.exportTransactions(params);
-      return data;
-    } catch (err) {
-      console.error('Failed to export transactions:', err);
-      throw err;
-    }
-  }, []);
+  setLoading(true);
+  setError(null);
+  try {
+    const data = await transactionsAPI.exportTransactions(params);
+    return data;
+  } catch (err) {
+    const errorMsg = err.response?.data?.error || err.message || 'Failed to export transactions';
+    setError(errorMsg);
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+}, []);
+
+const exportTransactionsAsExcel = useCallback(async (params = {}) => {
+  setLoading(true);
+  setError(null);
+  try {
+    const response = await transactionsAPI.exportTransactionsAsExcel(params);
+    return response;
+  } catch (err) {
+    const errorMsg = err.response?.data?.error || err.message || 'Failed to export as Excel';
+    setError(errorMsg);
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+}, []);
+
+const exportTransactionsAsPDF = useCallback(async (params = {}) => {
+  setLoading(true);
+  setError(null);
+  try {
+    const response = await transactionsAPI.exportTransactionsAsPDF(params);
+    return response;
+  } catch (err) {
+    const errorMsg = err.response?.data?.error || err.message || 'Failed to export as PDF';
+    setError(errorMsg);
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+}, []);
+
+const exportTransactionsAsJSON = useCallback(async (params = {}) => {
+  setLoading(true);
+  setError(null);
+  try {
+    const data = await transactionsAPI.exportTransactionsAsJSON(params);
+    return data;
+  } catch (err) {
+    const errorMsg = err.response?.data?.error || err.message || 'Failed to export as JSON';
+    setError(errorMsg);
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+}, []);
 
   // ==================== Cashbook Balances ====================
 
@@ -742,7 +792,12 @@ export const TransactionsProvider = ({ children }) => {
     createTransactionCategory,
     updateTransactionCategory,
     deleteTransactionCategory,
-
+    // Export
+    exportTransactions,
+    exportTransactionsAsExcel,
+    exportTransactionsAsPDF,
+    exportTransactionsAsJSON,
+        
     // Transactions Methods
     fetchTransactions,
     fetchTransaction,
@@ -771,6 +826,7 @@ export const TransactionsProvider = ({ children }) => {
     // Storage Management
     clearLocalData,
     cleanupOldTransactions,
+// Export
 
     // Utility
     setError,

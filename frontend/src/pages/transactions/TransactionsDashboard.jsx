@@ -16,7 +16,7 @@ import {
   ImportExport, PictureAsPdf, GridOn, BarChart,
   Download, Upload, QrCode2, Search, Sort
 } from '@mui/icons-material';
-
+import ExportDialog from '../../components/transactions/ExportDilog';
 import TransactionList from '../../components/transactions/TransactionList';
 import TransactionFilters from '../../components/transactions/TransactionFilters';
 import MonthlyChart from '../../components/transactions/MonthlyChart';
@@ -511,6 +511,7 @@ const TransactionsDashboard = () => {
   const handleQuickAction = (action) => {
     switch (action) {
       case 'export-csv':
+      case 'export-pdf':
         setExportDialogOpen(true);
         break;
       case 'import':
@@ -519,10 +520,14 @@ const TransactionsDashboard = () => {
       case 'scan-receipt':
         showSnackbar('Receipt scanning coming soon', 'info');
         break;
+      case 'analytics':
+        setActiveTab(2); // Switch to analytics tab
+        break;
       default:
         showSnackbar(`${action} functionality coming soon`, 'info');
     }
   };
+
 
   // Context info for breadcrumbs
   const getBreadcrumbs = () => {
@@ -995,52 +1000,14 @@ const TransactionsDashboard = () => {
       </Drawer>
 
       {/* Export Dialog */}
-      <Dialog open={exportDialogOpen} onClose={() => setExportDialogOpen(false)}>
-        <DialogTitle>Export Transactions</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" mb={2}>
-            Choose export format and options for your transactions data.
-          </Typography>
-          <Stack spacing={2}>
-            <Button
-              variant="outlined"
-              startIcon={<GridOn />}
-              fullWidth
-              onClick={() => {
-                showSnackbar('CSV export functionality coming soon', 'info');
-                setExportDialogOpen(false);
-              }}
-            >
-              Export as CSV
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<PictureAsPdf />}
-              fullWidth
-              onClick={() => {
-                showSnackbar('PDF export functionality coming soon', 'info');
-                setExportDialogOpen(false);
-              }}
-            >
-              Export as PDF Report
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<BarChart />}
-              fullWidth
-              onClick={() => {
-                showSnackbar('Excel export functionality coming soon', 'info');
-                setExportDialogOpen(false);
-              }}
-            >
-              Export for Excel
-            </Button>
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setExportDialogOpen(false)}>Cancel</Button>
-        </DialogActions>
-      </Dialog>
+      <ExportDialog
+        open={exportDialogOpen}
+        onClose={() => setExportDialogOpen(false)}
+        filters={filters}
+        dateRange={dateRange}
+        storeId={storeId}
+        cashbookId={cashbookId}
+      />
 
       {/* Quick Actions Menu */}
       <QuickActionsMenu

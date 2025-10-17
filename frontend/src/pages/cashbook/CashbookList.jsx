@@ -430,12 +430,14 @@ const CashbookList = () => {
     }, 0);
     
     const activeCashbooks = filteredCashbooks.filter(cb => cb.is_active).length;
+    const inactiveCashbooks = filteredCashbooks.filter(cb => !cb.is_active).length;
     const averageBalance = filteredCashbooks.length > 0 ? totalBalance / filteredCashbooks.length : 0;
 
     return {
       totalTransactions,
       totalBalance,
       activeCashbooks,
+      inactiveCashbooks,
       averageBalance,
       totalCashbooks: filteredCashbooks.length
     };
@@ -715,6 +717,25 @@ const CashbookList = () => {
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Active Cashbooks
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper
+            sx={{
+              p: 3,
+              borderRadius: 3,
+              background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.05)} 0%, ${alpha(theme.palette.info.main, 0.1)} 100%)`,
+              border: `1px solid ${alpha(theme.palette.info.main, 0.1)}`,
+              textAlign: 'center'
+            }}
+          >
+            <TrendingUp sx={{ fontSize: 40, color: 'info.main', mb: 1 }} />
+            <Typography variant="h4" fontWeight={700} color="info.main">
+              {statistics.inactiveCashbooks}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              InActive Cashbooks
             </Typography>
           </Paper>
         </Grid>

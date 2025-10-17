@@ -1,28 +1,29 @@
 # Use official Python 3.13 image
 FROM python:3.13-slim
 
-# Set working directory
-WORKDIR /app
+# Create and set work directory
+WORKDIR /backend
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# Prevent Python from creating .pyc files and enable unbuffered output
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1 
 
-# Copy requirements first for caching
+# Upgrade pip
+RUN pip install --upgrade pip
+
+# Copy dependencies file
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+# Install dependencies (Gunicorn included)
+RUN pip install --no-cache-dir -r requirements.txt
+# If Gunicorn is not listed in the file, you can do:
+# RUN pip install --no-cache-dir gunicorn
 
-# Copy project files
+# Copy the full project
 COPY . .
 
-# Expose Django default port
+# Expose port for the app
 EXPOSE 8000
 
-# Run server in development
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Start using Gunicorn (change "myproject" to your Django project name)
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "cashbook_backend.wsgi:application"]

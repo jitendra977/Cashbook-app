@@ -141,6 +141,37 @@ const transactionsAPI = {
     const response = await api.get('/transactions/summary/', { params });
     return response.data;
   },
+// Export Methods - all use the same endpoint with format parameter
+  exportTransactions: async (params = {}) => {
+    const response = await api.get('/transactions/export/', { params });
+    return response.data;
+  },
+
+  exportTransactionsAsExcel: async (params = {}) => {
+    const response = await api.get('/transactions/export/', {
+      params: { ...params, format: 'excel' },
+      responseType: 'blob'
+    });
+    return response;
+  },
+
+  exportTransactionsAsPDF: async (params = {}) => {
+    const response = await api.get('/transactions/export/', {
+      params: { ...params, format: 'pdf' },
+      responseType: 'blob'
+    });
+    return response;
+  },
+
+  exportTransactionsAsJSON: async (params = {}) => {
+    const response = await api.get('/transactions/export/', {
+      params: { ...params, format: 'json' }
+    });
+    return response.data;
+  },
+
+
+
 };
 
 export default transactionsAPI;

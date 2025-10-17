@@ -1,0 +1,39 @@
+# =================== Python ===================
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+*.env
+.env.*
+!.env.example
+
+# Django static/media
+staticfiles/
+media/
+
+# =================== Node / Frontend ===================
+node_modules/
+dist/
+build/
+.vite/
+.bun/
+*.lock
+*.tgz
+
+# =================== Docker ===================
+*.pid
+*.seed
+*.pid.lock
+docker-compose.override.yml
+
+# =================== IDE / OS ===================
+.vscode/
+.idea/
+*.swo
+*.swp
+.DS_Store
+Thumbs.db

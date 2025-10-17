@@ -6,7 +6,22 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db.models import Q, Sum, Count, Avg
 from django.utils import timezone
+from rest_framework.permissions import AllowAny
 from datetime import datetime, timedelta
+from django.http import HttpResponse
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter, A4, landscape
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+import json
+from rest_framework.decorators import action
+
+from decimal import Decimal
 from .models import TransactionType, TransactionCategory, Transaction, CashbookBalance
 from store.models import StoreUser, Cashbook
 from .serializers import (
@@ -327,20 +342,299 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def export(self, request):
-        """Export transactions data (returns formatted data for CSV/Excel)"""
-        queryset = self._apply_filters(request, self.get_queryset())
+        """
+        Export transactions in multiple formats: Excel, JSON, or PDF
+        Query params:
+        - format: 'excel', 'json', or 'pdf' (default: 'json')
+        - All standard filters: store, cashbook, start_date, end_date, type, category, status
+        """
+        try:
+            # Apply all filters from request
+            queryset = self._apply_filters(request, self.get_queryset())
+            
+            # Optional: Limit export size to prevent performance issues
+            max_export_size = 10000
+            total_count = queryset.count()
+            
+            if total_count > max_export_size:
+                return Response(
+                    {
+                        "error": f"Cannot export more than {max_export_size} records. "
+                                f"Your query returned {total_count} records. "
+                                f"Please apply additional filters to reduce the result set."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # If no results, return early with message
+            if total_count == 0:
+                return Response({
+                    "count": 0,
+                    "data": [],
+                    "message": "No transactions found matching the criteria"
+                })
+            
+            # Get export format from query params
+            export_format = request.query_params.get('format', 'json').lower()
+            
+            # Validate format
+            if export_format not in ['excel', 'json', 'pdf']:
+                return Response(
+                    {"error": "Invalid format. Must be 'excel', 'json', or 'pdf'"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Get filter info for metadata
+            filters_applied = self._get_applied_filters(request)
+            
+            # Route to appropriate export method
+            if export_format == 'excel':
+                return self._export_excel(queryset, filters_applied, request.user)
+            elif export_format == 'pdf':
+                return self._export_pdf(queryset, filters_applied, request.user)
+            else:  # json
+                return self._export_json(queryset, filters_applied, request.user)
+                
+        except ValueError as e:
+            return Response(
+                {"error": f"Invalid parameter value: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Export failed: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def _export_json(self, queryset, filters_applied, user):
+        """Export transactions as JSON"""
+        serializer = TransactionListSerializer(queryset, many=True)
         
-        # Don't paginate for export
-        serializer = TransactionDetailSerializer(queryset, many=True)
-        
-        return Response({
-            "count": len(serializer.data),
+        response_data = {
+            "success": True,
+            "count": queryset.count(),
             "data": serializer.data,
-            "exported_at": timezone.now().isoformat()
-        })
-
+            "exported_at": timezone.now().isoformat(),
+            "exported_by": user.username,
+            "filters_applied": filters_applied,
+        }
+        
+        return Response(response_data)
+    
+    def _export_excel(self, queryset, filters_applied, user):
+        """Export transactions as Excel file"""
+        # Create workbook in memory
+        output = io.BytesIO()
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Transactions"
+        
+        # Define styles
+        header_font = Font(bold=True, color="FFFFFF", size=12)
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        header_alignment = Alignment(horizontal="center", vertical="center")
+        
+        thin_border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+        
+        # Add title
+        ws.merge_cells('A1:J1')
+        ws['A1'] = "Transaction Export Report"
+        ws['A1'].font = Font(bold=True, size=16)
+        ws['A1'].alignment = Alignment(horizontal="center")
+        
+        # Add metadata
+        row = 3
+        metadata = [
+            ("Exported By:", user.username),
+            ("Exported At:", timezone.now().strftime("%Y-%m-%d %H:%M:%S")),
+            ("Total Records:", str(queryset.count()))
+        ]
+        
+        for label, value in metadata:
+            ws[f'A{row}'] = label
+            ws[f'B{row}'] = value
+            row += 1
+        
+        # Add filters if applied
+        if filters_applied:
+            row += 1
+            ws[f'A{row}'] = "Filters Applied:"
+            ws[f'A{row}'].font = Font(bold=True)
+            for key, value in filters_applied.items():
+                row += 1
+                ws[f'A{row}'] = f"  {key.replace('_', ' ').title()}:"
+                ws[f'B{row}'] = str(value)
+        
+        # Add header row
+        row += 2
+        headers = [
+            'ID', 'Date', 'Cashbook', 'Store', 'Type', 
+            'Category', 'Amount', 'Description', 'Status', 'Reference'
+        ]
+        
+        for col, header in enumerate(headers, start=1):
+            cell = ws.cell(row=row, column=col)
+            cell.value = header
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+            cell.border = thin_border
+        
+        # Add data rows
+        for transaction in queryset:
+            row += 1
+            data = [
+                transaction.id,
+                transaction.transaction_date.strftime("%Y-%m-%d") if transaction.transaction_date else '',
+                transaction.cashbook.name if transaction.cashbook else '',
+                transaction.cashbook.store.name if transaction.cashbook and transaction.cashbook.store else '',
+                transaction.type.name if transaction.type else '',
+                transaction.category.name if transaction.category else '',
+                float(transaction.amount) if transaction.amount else 0.0,
+                transaction.description or '',
+                transaction.status or '',
+                transaction.reference_number or ''
+            ]
+            
+            for col, value in enumerate(data, start=1):
+                cell = ws.cell(row=row, column=col)
+                cell.value = value
+                cell.border = thin_border
+                
+                # Format amount column
+                if col == 7:  # Amount column
+                    cell.number_format = '#,##0.00'
+        
+        # Adjust column widths
+        column_widths = [12, 12, 20, 20, 15, 15, 12, 30, 12, 15]
+        for i, width in enumerate(column_widths, start=1):
+            ws.column_dimensions[get_column_letter(i)].width = width
+        
+        # Save workbook to bytes buffer
+        wb.save(output)
+        output.seek(0)
+        
+        # Create HTTP response
+        response = HttpResponse(
+            output.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        filename = f'transactions_export_{timezone.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
+    
+    def _export_pdf(self, queryset, filters_applied, user):
+        """Export transactions as PDF file"""
+        # Create bytes buffer for PDF
+        buffer = io.BytesIO()
+        
+        # Create PDF document
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), topMargin=0.5*inch)
+        elements = []
+        
+        # Define styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=16,
+            textColor=colors.HexColor('#2E5BFF'),
+            alignment=TA_CENTER,
+            spaceAfter=20
+        )
+        
+        # Add title
+        title = Paragraph("Transaction Export Report", title_style)
+        elements.append(title)
+        
+        # Add metadata
+        metadata_text = f"""
+        <b>Exported By:</b> {user.username}<br/>
+        <b>Exported At:</b> {timezone.now().strftime("%Y-%m-%d %H:%M:%S")}<br/>
+        <b>Total Records:</b> {queryset.count()}<br/>
+        """
+        
+        if filters_applied:
+            metadata_text += "<b>Filters Applied:</b><br/>"
+            for key, value in filters_applied.items():
+                metadata_text += f"&nbsp;&nbsp;{key.replace('_', ' ').title()}: {value}<br/>"
+        
+        metadata = Paragraph(metadata_text, styles["Normal"])
+        elements.append(metadata)
+        elements.append(Spacer(1, 0.2*inch))
+        
+        # Prepare table data
+        table_data = [['ID', 'Date', 'Cashbook', 'Type', 'Category', 'Amount', 'Status']]
+        
+        for transaction in queryset:
+            table_data.append([
+                str(transaction.id),
+                transaction.transaction_date.strftime("%Y-%m-%d") if transaction.transaction_date else '',
+                (transaction.cashbook.name[:20] + '...') if transaction.cashbook and len(transaction.cashbook.name) > 20 else (transaction.cashbook.name if transaction.cashbook else ''),
+                transaction.type.name if transaction.type else '',
+                transaction.category.name if transaction.category else '',
+                f"${float(transaction.amount):,.2f}" if transaction.amount else '$0.00',
+                transaction.status or ''
+            ])
+        
+        # Create table
+        col_widths = [0.8*inch, 1*inch, 1.5*inch, 1.2*inch, 1.2*inch, 1*inch, 0.8*inch]
+        table = Table(table_data, colWidths=col_widths, repeatRows=1)
+        
+        # Style the table
+        table.setStyle(TableStyle([
+            # Header style
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E5BFF')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            
+            # Data style
+            ('ALIGN', (0, 1), (-1, -1), 'LEFT'),
+            ('ALIGN', (5, 1), (5, -1), 'RIGHT'),  # Amount column
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F8F9FA')]),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        
+        elements.append(table)
+        
+        # Build PDF
+        doc.build(elements)
+        buffer.seek(0)
+        
+        # Create HTTP response
+        response = HttpResponse(
+            buffer.getvalue(),
+            content_type='application/pdf'
+        )
+        filename = f'transactions_export_{timezone.now().strftime("%Y%m%d_%H%M%S")}.pdf'
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
+    def _get_applied_filters(self, request):
+        """Get dictionary of applied filters"""
+        filters_applied = {}
+        filter_params = ['store', 'cashbook', 'start_date', 'end_date', 'type', 'category', 'status']
+        
+        for param in filter_params:
+            value = request.query_params.get(param)
+            if value:
+                filters_applied[param] = value
+        
+        return filters_applied
     @action(detail=False, methods=['get'])
     def by_category(self, request):
         """Get transactions grouped by category with totals"""
