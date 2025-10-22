@@ -3,14 +3,13 @@ import PropTypes from 'prop-types';
 import {
   Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
   TableSortLabel, TextField, IconButton, Tooltip, Chip, Menu, MenuItem, Button,
-  Pagination, Select, FormControl, InputLabel, InputAdornment, Stack, Card,
-  CardContent, Grid, Divider, Dialog, DialogTitle, DialogContent, DialogActions,
-  Checkbox, TablePagination, Collapse, Alert, CircularProgress, Badge, Avatar
+  Select, FormControl, InputLabel, InputAdornment, Stack, Card, CardContent, Grid,
+  Divider, Dialog, DialogTitle, DialogContent, DialogActions, Checkbox, TablePagination,
+  Collapse, Alert, CircularProgress, Avatar
 } from '@mui/material';
 import {
-  Visibility, Edit, Delete, Search, FilterList, MoreVert, FileDownload,
-  TrendingUp, TrendingDown, CalendarToday, Category, AttachMoney,
-  Refresh, KeyboardArrowDown, KeyboardArrowUp, CheckCircle, Cancel,
+  Visibility, Edit, Delete, Search, FilterList, FileDownload, TrendingUp, TrendingDown,
+  AttachMoney, Refresh, KeyboardArrowDown, KeyboardArrowUp, CheckCircle, Cancel,
   Pending, Info, Store, AccountBalance
 } from '@mui/icons-material';
 
@@ -61,7 +60,6 @@ const TransactionList = ({
   currentStoreName = '',
   currentCashbookName = ''
 }) => {
-  // State management
   const [orderBy, setOrderBy] = useState('transaction_date');
   const [order, setOrder] = useState('desc');
   const [search, setSearch] = useState('');
@@ -71,83 +69,55 @@ const TransactionList = ({
   const [filterAnchorEl, setFilterAnchorEl] = useState(null);
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [confirmDialog, setConfirmDialog] = useState({ open: false, type: '', data: null });
-
-  // Filters
   const [filters, setFilters] = useState({
-    type: '',
-    category: '',
-    status: '',
-    dateFrom: '',
-    dateTo: '',
-    amountMin: '',
-    amountMax: ''
+    type: '', category: '', status: '',
+    dateFrom: '', dateTo: '',
+    amountMin: '', amountMax: ''
   });
 
   const displayColumns = customColumns || columns;
 
-  // Process transactions data to ensure consistent field names
+  // Process transactions
   const processedTransactions = useMemo(() => {
     if (!Array.isArray(transactions)) return [];
     
-    return transactions.map(tx => {
-      // Normalize field names to handle different API response formats
-      return {
-        id: tx.id,
-        // Amount handling
-        amount: tx.amount || tx.amount_value || 0,
-        // Date handling
-        transaction_date: tx.transaction_date || tx.date || tx.created_at,
-        value_date: tx.value_date || tx.transaction_date,
-        // Type handling
-        type_name: tx.type_name || tx.transaction_type?.name || tx.type?.name || 'Unknown',
-        type: tx.type || tx.transaction_type,
-        // Category handling
-        category_name: tx.category_name || tx.category?.name || 'Uncategorized',
-        category: tx.category,
-        // Status handling
-        status: tx.status || 'completed',
-        // Description and reference
-        description: tx.description || tx.notes || '',
-        reference_number: tx.reference_number || tx.ref_number || tx.id.toString(),
-        // User info
-        created_by_username: tx.created_by_username || tx.created_by_username?.username || 'System',
-        created_by: tx.created_by,
-        updated_by_username: tx.updated_by_username || tx.updated_by?.username,
-        updated_by: tx.updated_by,
-        // Store and cashbook info
-        store: tx.store || tx.cashbook?.store || tx.store_id,
-        store_name: tx.store_name || tx.cashbook?.store?.name,
-        cashbook: tx.cashbook || tx.cashbook_id,
-        cashbook_name: tx.cashbook_name || tx.cashbook?.name,
-        // Additional fields
-        is_recurring: tx.is_recurring || false,
-        recurring_pattern: tx.recurring_pattern,
-        tags: tx.tags || [],
-        created_at: tx.created_at,
-        updated_at: tx.updated_at,
-        // Keep original data for reference
-        ...tx
-      };
-    });
+    return transactions.map(tx => ({
+      id: tx.id,
+      amount: tx.amount || tx.amount_value || 0,
+      transaction_date: tx.transaction_date || tx.date || tx.created_at,
+      value_date: tx.value_date || tx.transaction_date,
+      type_name: tx.type_name || tx.transaction_type?.name || tx.type?.name || 'Unknown',
+      type: tx.type || tx.transaction_type,
+      category_name: tx.category_name || tx.category?.name || 'Uncategorized',
+      category: tx.category,
+      status: tx.status || 'completed',
+      description: tx.description || tx.notes || '',
+      reference_number: tx.reference_number || tx.ref_number || tx.id.toString(),
+      created_by_username: tx.created_by_username || tx.created_by?.username || 'System',
+      created_by: tx.created_by,
+      updated_by_username: tx.updated_by_username || tx.updated_by?.username,
+      updated_by: tx.updated_by,
+      store: tx.store || tx.cashbook?.store || tx.store_id,
+      store_name: tx.store_name || tx.cashbook?.store?.name,
+      cashbook: tx.cashbook || tx.cashbook_id,
+      cashbook_name: tx.cashbook_name || tx.cashbook?.name,
+      is_recurring: tx.is_recurring || false,
+      recurring_pattern: tx.recurring_pattern,
+      tags: tx.tags || [],
+      created_at: tx.created_at,
+      updated_at: tx.updated_at,
+      ...tx
+    }));
   }, [transactions]);
 
-  // REMOVED: Client-side store/cashbook filtering since API already returns filtered data
-
-  // Calculate summary statistics
+  // Calculate summary
   const summary = useMemo(() => {
     const txs = processedTransactions;
-    const total = txs.reduce((sum, tx) => sum + (parseFloat(tx.amount) || 0), 0);
-    const completed = txs.filter(tx => tx.status === 'completed').length;
-    const pending = txs.filter(tx => tx.status === 'pending').length;
-    const cancelled = txs.filter(tx => tx.status === 'cancelled').length;
-    const avgAmount = txs.length > 0 ? total / txs.length : 0;
-
-    // Calculate income vs expense - IMPROVED LOGIC
     const income = txs
       .filter(tx => {
         const typeName = (tx.type_name || '').toLowerCase();
         const nature = tx.type?.nature || '';
-        return typeName.includes('income') || nature === 'income' || tx.amount > 0;
+        return typeName.includes('income') || nature === 'income';
       })
       .reduce((sum, tx) => sum + (parseFloat(tx.amount) || 0), 0);
     
@@ -155,24 +125,28 @@ const TransactionList = ({
       .filter(tx => {
         const typeName = (tx.type_name || '').toLowerCase();
         const nature = tx.type?.nature || '';
-        return typeName.includes('expense') || nature === 'expense' || tx.amount < 0;
+        return typeName.includes('expense') || nature === 'expense';
       })
       .reduce((sum, tx) => sum + Math.abs(parseFloat(tx.amount) || 0), 0);
 
+    const total = income + expense;
+    const completed = txs.filter(tx => tx.status === 'completed').length;
+    const pending = txs.filter(tx => tx.status === 'pending').length;
+    const cancelled = txs.filter(tx => tx.status === 'cancelled').length;
+
     return { 
-      total: Math.abs(total),
+      total,
       count: txs.length, 
       completed, 
       pending, 
-      cancelled, 
-      avgAmount,
+      cancelled,
       income,
       expense,
       net: income - expense
     };
   }, [processedTransactions]);
 
-  // Get unique filter options from transactions
+  // Get filter options
   const filterOptions = useMemo(() => {
     const txs = processedTransactions;
     return {
@@ -182,7 +156,19 @@ const TransactionList = ({
     };
   }, [processedTransactions]);
 
-  // Client-side filtering and sorting ONLY (no store/cashbook filtering)
+  // Helper function to normalize date to YYYY-MM-DD format
+  const normalizeDate = (dateString) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      return date.toISOString().split('T')[0];
+    } catch {
+      return '';
+    }
+  };
+
+  // Filtering and sorting with FIXED date comparison
   const filteredTransactions = useMemo(() => {
     let txs = processedTransactions;
 
@@ -203,24 +189,41 @@ const TransactionList = ({
     if (filters.type) txs = txs.filter(tx => tx.type_name === filters.type);
     if (filters.category) txs = txs.filter(tx => tx.category_name === filters.category);
     if (filters.status) txs = txs.filter(tx => tx.status === filters.status);
-    if (filters.dateFrom) txs = txs.filter(tx => tx.transaction_date >= filters.dateFrom);
-    if (filters.dateTo) txs = txs.filter(tx => tx.transaction_date <= filters.dateTo);
-    if (filters.amountMin) txs = txs.filter(tx => parseFloat(tx.amount) >= parseFloat(filters.amountMin));
-    if (filters.amountMax) txs = txs.filter(tx => parseFloat(tx.amount) <= parseFloat(filters.amountMax));
+    
+    // FIXED: Date filters with proper normalization
+    if (filters.dateFrom) {
+      const fromDate = normalizeDate(filters.dateFrom);
+      txs = txs.filter(tx => {
+        const txDate = normalizeDate(tx.transaction_date);
+        return txDate >= fromDate;
+      });
+    }
+    
+    if (filters.dateTo) {
+      const toDate = normalizeDate(filters.dateTo);
+      txs = txs.filter(tx => {
+        const txDate = normalizeDate(tx.transaction_date);
+        return txDate <= toDate;
+      });
+    }
+    
+    if (filters.amountMin) {
+      txs = txs.filter(tx => parseFloat(tx.amount) >= parseFloat(filters.amountMin));
+    }
+    
+    if (filters.amountMax) {
+      txs = txs.filter(tx => parseFloat(tx.amount) <= parseFloat(filters.amountMax));
+    }
 
     // Sort
     txs = txs.slice().sort((a, b) => {
       let aValue = a[orderBy] ?? '';
       let bValue = b[orderBy] ?? '';
 
-      // Handle numeric sorting for amount
       if (orderBy === 'amount') {
         aValue = parseFloat(aValue) || 0;
         bValue = parseFloat(bValue) || 0;
-      }
-
-      // Handle date sorting
-      if (orderBy === 'transaction_date') {
+      } else if (orderBy === 'transaction_date') {
         aValue = new Date(aValue);
         bValue = new Date(bValue);
       }
@@ -247,17 +250,11 @@ const TransactionList = ({
   }, [orderBy, order]);
 
   const handleSelectAll = useCallback((event) => {
-    if (event.target.checked) {
-      setSelected(paginatedTransactions.map(tx => tx.id));
-    } else {
-      setSelected([]);
-    }
+    setSelected(event.target.checked ? paginatedTransactions.map(tx => tx.id) : []);
   }, [paginatedTransactions]);
 
   const handleSelectOne = useCallback((id) => {
-    setSelected(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
+    setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   }, []);
 
   const handleChangePage = useCallback((event, newPage) => {
@@ -276,8 +273,8 @@ const TransactionList = ({
 
   const handleClearFilters = useCallback(() => {
     setFilters({
-      type: '', category: '', status: '', dateFrom: '', dateTo: '',
-      amountMin: '', amountMax: ''
+      type: '', category: '', status: '',
+      dateFrom: '', dateTo: '', amountMin: '', amountMax: ''
     });
     setSearch('');
     setPage(0);
@@ -286,8 +283,7 @@ const TransactionList = ({
   const toggleRowExpansion = useCallback((id) => {
     setExpandedRows(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(id)) newSet.delete(id);
-      else newSet.add(id);
+      newSet.has(id) ? newSet.delete(id) : newSet.add(id);
       return newSet;
     });
   }, []);
@@ -302,9 +298,8 @@ const TransactionList = ({
 
   const confirmAction = useCallback(() => {
     const { type, data } = confirmDialog;
-    if (type === 'delete' && onDelete) {
-      onDelete(data);
-    } else if (type === 'bulkDelete' && onBulkDelete) {
+    if (type === 'delete' && onDelete) onDelete(data);
+    else if (type === 'bulkDelete' && onBulkDelete) {
       onBulkDelete(data);
       setSelected([]);
     }
@@ -317,7 +312,6 @@ const TransactionList = ({
 
   const isSelected = (id) => selected.includes(id);
 
-  // Format date for display
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     try {
@@ -327,39 +321,21 @@ const TransactionList = ({
     }
   };
 
-  // Context header
-  const ContextHeader = () => (
-    <Box sx={{ mb: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-      <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-        {currentStoreName && (
-          <Chip 
-            icon={<Store />} 
-            label={`Store: ${currentStoreName}`} 
-            color="primary" 
-            variant="outlined"
-          />
-        )}
-        {currentCashbookName && (
-          <Chip 
-            icon={<AccountBalance />} 
-            label={`Cashbook: ${currentCashbookName}`} 
-            color="secondary" 
-            variant="outlined"
-          />
-        )}
-        <Typography variant="body2" color="text.secondary">
-          Showing {filteredTransactions.length} transactions
-          {storeId && ` for Store #${storeId}`}
-          {cashbookId && `, Cashbook #${cashbookId}`}
-        </Typography>
-      </Stack>
-    </Box>
-  );
-
   return (
     <Box>
       {/* Context Header */}
-      {(storeId || cashbookId) && <ContextHeader />}
+      {(storeId || cashbookId || currentStoreName || currentCashbookName) && (
+        <Box sx={{ mb: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+            {currentStoreName && (
+              <Chip icon={<Store />} label={`Store: ${currentStoreName}`} color="primary" variant="outlined" />
+            )}
+            {currentCashbookName && (
+              <Chip icon={<AccountBalance />} label={`Cashbook: ${currentCashbookName}`} color="secondary" variant="outlined" />
+            )}
+          </Stack>
+        </Box>
+      )}
 
       {/* Summary Cards */}
       {showSummary && (
@@ -372,9 +348,7 @@ const TransactionList = ({
                     <Typography variant="body2" color="text.secondary">Total Transactions</Typography>
                     <Typography variant="h5">{summary.count}</Typography>
                   </Box>
-                  <Avatar sx={{ bgcolor: 'primary.main' }}>
-                    <AttachMoney />
-                  </Avatar>
+                  <Avatar sx={{ bgcolor: 'primary.main' }}><AttachMoney /></Avatar>
                 </Stack>
               </CardContent>
             </Card>
@@ -387,9 +361,7 @@ const TransactionList = ({
                     <Typography variant="body2" color="text.secondary">Total Amount</Typography>
                     <Typography variant="h5">${summary.total.toFixed(2)}</Typography>
                   </Box>
-                  <Avatar sx={{ bgcolor: 'success.main' }}>
-                    <TrendingUp />
-                  </Avatar>
+                  <Avatar sx={{ bgcolor: 'success.main' }}><TrendingUp /></Avatar>
                 </Stack>
               </CardContent>
             </Card>
@@ -400,14 +372,11 @@ const TransactionList = ({
                 <Stack direction="row" alignItems="center" justifyContent="space-between">
                   <Box>
                     <Typography variant="body2" color="text.secondary">Net Balance</Typography>
-                    <Typography 
-                      variant="h5" 
-                      color={summary.net >= 0 ? 'success.main' : 'error.main'}
-                    >
+                    <Typography variant="h5" color={summary.net >= 0 ? 'success.main' : 'error.main'}>
                       ${summary.net.toFixed(2)}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Income: ${summary.income.toFixed(2)} | Expense: ${summary.expense.toFixed(2)}
+                      ↑${summary.income.toFixed(2)} ↓${summary.expense.toFixed(2)}
                     </Typography>
                   </Box>
                   <Avatar sx={{ bgcolor: summary.net >= 0 ? 'success.main' : 'error.main' }}>
@@ -420,13 +389,11 @@ const TransactionList = ({
           <Grid item xs={12} sm={6} md={3}>
             <Card>
               <CardContent>
-                <Stack spacing={1}>
-                  <Typography variant="body2" color="text.secondary">Status</Typography>
-                  <Stack direction="row" spacing={1} flexWrap="wrap">
-                    <Chip label={`✓ ${summary.completed}`} size="small" color="success" />
-                    <Chip label={`⏱ ${summary.pending}`} size="small" color="warning" />
-                    <Chip label={`✗ ${summary.cancelled}`} size="small" color="default" />
-                  </Stack>
+                <Typography variant="body2" color="text.secondary" gutterBottom>Status</Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap">
+                  <Chip label={`✓ ${summary.completed}`} size="small" color="success" />
+                  <Chip label={`⏱ ${summary.pending}`} size="small" color="warning" />
+                  <Chip label={`✗ ${summary.cancelled}`} size="small" color="default" />
                 </Stack>
               </CardContent>
             </Card>
@@ -434,12 +401,7 @@ const TransactionList = ({
         </Grid>
       )}
 
-      {/* Error Alert */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => {}}>
-          {error}
-        </Alert>
-      )}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {/* Toolbar */}
       <Paper sx={{ p: 2, mb: 2 }}>
@@ -450,24 +412,17 @@ const TransactionList = ({
               placeholder="Search transactions..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search />
-                  </InputAdornment>
-                )
-              }}
+              InputProps={{ startAdornment: <InputAdornment position="start"><Search /></InputAdornment> }}
               sx={{ flexGrow: 1, minWidth: 250 }}
             />
             
             {showFilters && (
               <Button
-                variant="outlined"
+                variant={hasActiveFilters ? 'contained' : 'outlined'}
                 startIcon={<FilterList />}
                 onClick={(e) => setFilterAnchorEl(e.currentTarget)}
-                endIcon={hasActiveFilters && <Badge color="primary" variant="dot" />}
               >
-                Filters
+                Filters {hasActiveFilters && `(${Object.values(filters).filter(v => v).length})`}
               </Button>
             )}
 
@@ -491,49 +446,30 @@ const TransactionList = ({
             )}
           </Stack>
 
-          {/* Bulk Actions */}
           {showBulkActions && selected.length > 0 && (
             <Stack direction="row" spacing={2} alignItems="center">
-              <Typography variant="body2" color="primary">
-                {selected.length} selected
-              </Typography>
-              <Button
-                size="small"
-                color="error"
-                startIcon={<Delete />}
-                onClick={handleBulkDelete}
-              >
+              <Typography variant="body2" color="primary">{selected.length} selected</Typography>
+              <Button size="small" color="error" startIcon={<Delete />} onClick={handleBulkDelete}>
                 Delete Selected
               </Button>
-              <Button size="small" onClick={() => setSelected([])}>
-                Clear Selection
-              </Button>
+              <Button size="small" onClick={() => setSelected([])}>Clear Selection</Button>
             </Stack>
           )}
 
-          {/* Active Filters Display */}
           {hasActiveFilters && (
             <Stack direction="row" spacing={1} flexWrap="wrap">
               {Object.entries(filters).map(([key, value]) => 
                 value && (
                   <Chip
                     key={key}
-                    label={`${key}: ${value}`}
+                    label={`${key}: ${key.includes('date') ? formatDate(value) : value}`}
                     size="small"
                     onDelete={() => handleFilterChange(key, '')}
                   />
                 )
               )}
-              {search && (
-                <Chip
-                  label={`search: ${search}`}
-                  size="small"
-                  onDelete={() => setSearch('')}
-                />
-              )}
-              <Button size="small" onClick={handleClearFilters}>
-                Clear All
-              </Button>
+              {search && <Chip label={`search: ${search}`} size="small" onDelete={() => setSearch('')} />}
+              <Button size="small" onClick={handleClearFilters}>Clear All</Button>
             </Stack>
           )}
         </Stack>
@@ -552,43 +488,25 @@ const TransactionList = ({
           
           <FormControl size="small" fullWidth>
             <InputLabel>Type</InputLabel>
-            <Select
-              value={filters.type}
-              label="Type"
-              onChange={(e) => handleFilterChange('type', e.target.value)}
-            >
+            <Select value={filters.type} label="Type" onChange={(e) => handleFilterChange('type', e.target.value)}>
               <MenuItem value="">All</MenuItem>
-              {filterOptions.types.map(type => (
-                <MenuItem key={type} value={type}>{type}</MenuItem>
-              ))}
+              {filterOptions.types.map(type => <MenuItem key={type} value={type}>{type}</MenuItem>)}
             </Select>
           </FormControl>
 
           <FormControl size="small" fullWidth>
             <InputLabel>Category</InputLabel>
-            <Select
-              value={filters.category}
-              label="Category"
-              onChange={(e) => handleFilterChange('category', e.target.value)}
-            >
+            <Select value={filters.category} label="Category" onChange={(e) => handleFilterChange('category', e.target.value)}>
               <MenuItem value="">All</MenuItem>
-              {filterOptions.categories.map(cat => (
-                <MenuItem key={cat} value={cat}>{cat}</MenuItem>
-              ))}
+              {filterOptions.categories.map(cat => <MenuItem key={cat} value={cat}>{cat}</MenuItem>)}
             </Select>
           </FormControl>
 
           <FormControl size="small" fullWidth>
             <InputLabel>Status</InputLabel>
-            <Select
-              value={filters.status}
-              label="Status"
-              onChange={(e) => handleFilterChange('status', e.target.value)}
-            >
+            <Select value={filters.status} label="Status" onChange={(e) => handleFilterChange('status', e.target.value)}>
               <MenuItem value="">All</MenuItem>
-              {filterOptions.statuses.map(status => (
-                <MenuItem key={status} value={status}>{status}</MenuItem>
-              ))}
+              {filterOptions.statuses.map(status => <MenuItem key={status} value={status}>{status}</MenuItem>)}
             </Select>
           </FormControl>
 
@@ -627,31 +545,33 @@ const TransactionList = ({
             />
           </Stack>
 
-          <Button variant="outlined" fullWidth onClick={handleClearFilters}>
-            Clear Filters
-          </Button>
+          <Button variant="outlined" fullWidth onClick={handleClearFilters}>Clear Filters</Button>
         </Stack>
       </Menu>
 
       {/* Table */}
       {loading ? (
-        <Box display="flex" justifyContent="center" alignItems="center" py={8}>
+        <Box display="flex" justifyContent="center" py={8}>
           <CircularProgress />
         </Box>
       ) : processedTransactions.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="h6" color="text.secondary" gutterBottom>
             No transactions found
-            {(storeId || cashbookId) && ' for current selection'}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {hasActiveFilters 
-              ? 'Try adjusting your filters' 
-              : (storeId || cashbookId) 
-                ? 'No transactions found for the selected store/cashbook' 
-                : 'Get started by creating your first transaction'
-            }
+            {hasActiveFilters ? 'Try adjusting your filters' : 'Get started by creating your first transaction'}
           </Typography>
+        </Paper>
+      ) : filteredTransactions.length === 0 ? (
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            No matching transactions
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Try adjusting your search or filters
+          </Typography>
+          <Button sx={{ mt: 2 }} onClick={handleClearFilters}>Clear All Filters</Button>
         </Paper>
       ) : (
         <>
@@ -688,11 +608,7 @@ const TransactionList = ({
 
                   return (
                     <React.Fragment key={tx.id}>
-                      <TableRow
-                        hover
-                        selected={isItemSelected}
-                        sx={{ cursor: onTransactionClick ? 'pointer' : 'default' }}
-                      >
+                      <TableRow hover selected={isItemSelected} sx={{ cursor: onTransactionClick ? 'pointer' : 'default' }}>
                         {enableSelection && (
                           <TableCell padding="checkbox">
                             <Checkbox
@@ -705,16 +621,11 @@ const TransactionList = ({
                         <TableCell onClick={() => onTransactionClick?.(tx)}>
                           <Stack direction="row" alignItems="center" spacing={1}>
                             {showExpandableRows && (
-                              <IconButton
-                                size="small"
-                                onClick={(e) => { e.stopPropagation(); toggleRowExpansion(tx.id); }}
-                              >
+                              <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleRowExpansion(tx.id); }}>
                                 {isExpanded ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
                               </IconButton>
                             )}
-                            <Typography variant="body2">
-                              {formatDate(tx.transaction_date)}
-                            </Typography>
+                            <Typography variant="body2">{formatDate(tx.transaction_date)}</Typography>
                           </Stack>
                         </TableCell>
                         <TableCell onClick={() => onTransactionClick?.(tx)}>
@@ -725,15 +636,11 @@ const TransactionList = ({
                             color={
                               (tx.type_name?.toLowerCase().includes('income') || tx.type?.nature === 'income') 
                                 ? 'success' 
-                                : (tx.type_name?.toLowerCase().includes('expense') || tx.type?.nature === 'expense')
-                                ? 'error'
-                                : 'default'
+                                : 'error'
                             }
                           />
                         </TableCell>
-                        <TableCell onClick={() => onTransactionClick?.(tx)}>
-                          {tx.category_name || '-'}
-                        </TableCell>
+                        <TableCell onClick={() => onTransactionClick?.(tx)}>{tx.category_name || '-'}</TableCell>
                         <TableCell align="right" onClick={() => onTransactionClick?.(tx)}>
                           <Typography 
                             variant="body2" 
@@ -741,9 +648,7 @@ const TransactionList = ({
                             color={
                               (tx.type_name?.toLowerCase().includes('income') || tx.type?.nature === 'income') 
                                 ? 'success.main' 
-                                : (tx.type_name?.toLowerCase().includes('expense') || tx.type?.nature === 'expense')
-                                ? 'error.main'
-                                : 'text.primary'
+                                : 'error.main'
                             }
                           >
                             ${parseFloat(tx.amount || 0).toFixed(2)}
@@ -767,36 +672,24 @@ const TransactionList = ({
                             {tx.reference_number || '-'}
                           </Typography>
                         </TableCell>
-                        <TableCell onClick={() => onTransactionClick?.(tx)}>
-                          {tx.created_by_username}
-                        </TableCell>
+                        <TableCell onClick={() => onTransactionClick?.(tx)}>{tx.created_by_username}</TableCell>
                         <TableCell align="center">
                           <Stack direction="row" spacing={0.5} justifyContent="center">
-                            <Tooltip title="View Details">
-                              <IconButton
-                                size="small"
-                                onClick={(e) => { e.stopPropagation(); onTransactionClick?.(tx); }}
-                              >
+                            <Tooltip title="View">
+                              <IconButton size="small" onClick={(e) => { e.stopPropagation(); onTransactionClick?.(tx); }}>
                                 <Visibility fontSize="small" />
                               </IconButton>
                             </Tooltip>
                             {onEdit && (
                               <Tooltip title="Edit">
-                                <IconButton
-                                  size="small"
-                                  onClick={(e) => { e.stopPropagation(); onEdit(tx); }}
-                                >
+                                <IconButton size="small" onClick={(e) => { e.stopPropagation(); onEdit(tx); }}>
                                   <Edit fontSize="small" />
                                 </IconButton>
                               </Tooltip>
                             )}
                             {onDelete && (
                               <Tooltip title="Delete">
-                                <IconButton
-                                  size="small"
-                                  color="error"
-                                  onClick={(e) => { e.stopPropagation(); handleDelete(tx); }}
-                                >
+                                <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); handleDelete(tx); }}>
                                   <Delete fontSize="small" />
                                 </IconButton>
                               </Tooltip>
@@ -805,7 +698,6 @@ const TransactionList = ({
                         </TableCell>
                       </TableRow>
 
-                      {/* Expandable Row Details */}
                       {showExpandableRows && (
                         <TableRow>
                           <TableCell colSpan={displayColumns.length} sx={{ py: 0, borderBottom: isExpanded ? 1 : 0 }}>
@@ -813,10 +705,9 @@ const TransactionList = ({
                               <Box sx={{ p: 2, bgcolor: 'background.default' }}>
                                 <Grid container spacing={2}>
                                   <Grid item xs={12} md={6}>
-                                    <Typography variant="subtitle2" gutterBottom>Transaction Details</Typography>
-                                    <Stack spacing={1}>
+                                    <Typography variant="subtitle2" gutterBottom>Details</Typography>
+                                    <Stack spacing={0.5}>
                                       <Typography variant="body2"><strong>ID:</strong> {tx.id}</Typography>
-                                      <Typography variant="body2"><strong>Transaction ID:</strong> {tx.transaction_id || 'N/A'}</Typography>
                                       <Typography variant="body2"><strong>Store:</strong> {tx.store_name || 'N/A'}</Typography>
                                       <Typography variant="body2"><strong>Cashbook:</strong> {tx.cashbook_name || 'N/A'}</Typography>
                                       <Typography variant="body2"><strong>Created:</strong> {formatDate(tx.created_at)}</Typography>
@@ -825,13 +716,13 @@ const TransactionList = ({
                                   </Grid>
                                   <Grid item xs={12} md={6}>
                                     <Typography variant="subtitle2" gutterBottom>Additional Info</Typography>
-                                    <Stack spacing={1}>
+                                    <Stack spacing={0.5}>
                                       <Typography variant="body2"><strong>Value Date:</strong> {formatDate(tx.value_date)}</Typography>
                                       <Typography variant="body2"><strong>Recurring:</strong> {tx.is_recurring ? 'Yes' : 'No'}</Typography>
                                       <Typography variant="body2"><strong>Updated By:</strong> {tx.updated_by_username || 'N/A'}</Typography>
-                                      <Typography variant="body2"><strong>Full Description:</strong></Typography>
+                                      <Typography variant="body2"><strong>Description:</strong></Typography>
                                       <Typography variant="body2" color="text.secondary">
-                                        {tx.description || 'No description provided'}
+                                        {tx.description || 'No description'}
                                       </Typography>
                                     </Stack>
                                   </Grid>
@@ -848,7 +739,6 @@ const TransactionList = ({
             </Table>
           </TableContainer>
 
-          {/* Pagination */}
           {showPagination && (
             <TablePagination
               component="div"
@@ -864,10 +754,7 @@ const TransactionList = ({
       )}
 
       {/* Confirmation Dialog */}
-      <Dialog
-        open={confirmDialog.open}
-        onClose={() => setConfirmDialog({ open: false, type: '', data: null })}
-      >
+      <Dialog open={confirmDialog.open} onClose={() => setConfirmDialog({ open: false, type: '', data: null })}>
         <DialogTitle>
           {confirmDialog.type === 'delete' ? 'Confirm Delete' : 'Confirm Bulk Delete'}
         </DialogTitle>
@@ -880,12 +767,8 @@ const TransactionList = ({
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfirmDialog({ open: false, type: '', data: null })}>
-            Cancel
-          </Button>
-          <Button onClick={confirmAction} color="error" variant="contained">
-            Delete
-          </Button>
+          <Button onClick={() => setConfirmDialog({ open: false, type: '', data: null })}>Cancel</Button>
+          <Button onClick={confirmAction} color="error" variant="contained">Delete</Button>
         </DialogActions>
       </Dialog>
     </Box>

@@ -816,7 +816,7 @@ const exportTransactionsAsJSON = useCallback(async (params = {}) => {
     fetchTransactionSummary,
     fetchTransactionsByCategory,
     fetchTransactionsByType,
-    exportTransactions,
+
 
     // Cashbook Balances Methods
     fetchCashbookBalances,

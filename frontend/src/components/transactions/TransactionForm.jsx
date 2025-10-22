@@ -1,43 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Box,
-  Paper,
-  TextField,
-  Button,
-  Typography,
-  Grid,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Select,
-  FormControlLabel,
-  Checkbox,
-  InputAdornment,
-  Stack,
-  Alert,
-  CircularProgress,
-  Divider,
-  Chip,
-  alpha,
-  useTheme,
+  Box, Paper, TextField, Button, Typography, Grid, MenuItem,
+  FormControl, InputLabel, Select, FormControlLabel, Checkbox,
+  InputAdornment, Stack, Alert, CircularProgress, Chip, alpha, useTheme,
 } from '@mui/material';
 import {
-  Save,
-  Cancel,
-  RestartAlt,
-  AttachMoney,
-  CalendarToday,
-  Description,
-  Category,
-  Receipt,
-  Repeat,
-  Info,
-  CheckCircle,
-  Pending,
-  Block,
-  TrendingUp,
-  TrendingDown,
+  Save, Cancel, RestartAlt, AttachMoney, CalendarToday,
+  Description, Receipt, Repeat, CheckCircle, Pending, Block,
+  TrendingUp, TrendingDown,
 } from '@mui/icons-material';
 import { useTransactionsContext } from '../../context/TransactionsContext';
 
@@ -47,347 +18,162 @@ const TransactionForm = ({ transactionId, onSuccess, onCancel }) => {
   const theme = useTheme();
   
   const {
-    transactionTypes,
-    transactionCategories,
-    loading,
-    error,
-    fetchTransactionTypes,
-    fetchTransactionCategories,
-    fetchTransaction,
-    createTransaction,
-    updateTransaction,
-    setError,
+    transactionTypes, transactionCategories, loading, error,
+    fetchTransactionTypes, fetchTransactionCategories, fetchTransaction,
+    createTransaction, updateTransaction, setError,
   } = useTransactionsContext();
 
-  const [formData, setFormData] = useState({
-    type: '',
-    category: '',
-    amount: '',
+  const initialFormState = {
+    type: '', category: '', amount: '',
     transaction_date: new Date().toISOString().split('T')[0],
     value_date: new Date().toISOString().split('T')[0],
-    description: '',
-    reference_number: '',
-    status: 'completed',
-    is_recurring: false,
-    recurring_pattern: '',
-  });
-
-  const [formErrors, setFormErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [originalData, setOriginalData] = useState(null);
-
-  // Fetch transaction types and categories on mount
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        await fetchTransactionTypes();
-        await fetchTransactionCategories();
-      } catch (err) {
-        console.error('Failed to fetch form data:', err);
-      }
-    };
-    fetchData();
-  }, [fetchTransactionTypes, fetchTransactionCategories]);
-
-  // Fetch existing transaction if editing
-  useEffect(() => {
-    const loadTransaction = async () => {
-      if (transactionId) {
-        setIsEditMode(true);
-        try {
-          const transaction = await fetchTransaction(transactionId);
-          if (transaction) {
-            console.log('Loaded transaction:', transaction);
-            
-            const transactionData = {
-              type: transaction.type?.id?.toString() || transaction.type?.toString() || '',
-              category: transaction.category?.id?.toString() || transaction.category?.toString() || '',
-              amount: transaction.amount || '',
-              transaction_date: transaction.transaction_date || new Date().toISOString().split('T')[0],
-              value_date: transaction.value_date || transaction.transaction_date || new Date().toISOString().split('T')[0],
-              description: transaction.description || '',
-              reference_number: transaction.reference_number || '',
-              status: transaction.status || 'completed',
-              is_recurring: transaction.is_recurring || false,
-              recurring_pattern: transaction.recurring_pattern || '',
-            };
-            
-            console.log('Formatted transaction data:', transactionData);
-            
-            setFormData(transactionData);
-            setOriginalData(transactionData);
-          }
-        } catch (err) {
-          console.error('Failed to load transaction:', err);
-          setError('Failed to load transaction details');
-        }
-      } else {
-        // Initialize new transaction form
-        const newFormData = {
-          type: '',
-          category: '',
-          amount: '',
-          transaction_date: new Date().toISOString().split('T')[0],
-          value_date: new Date().toISOString().split('T')[0],
-          description: '',
-          reference_number: '',
-          status: 'completed',
-          is_recurring: false,
-          recurring_pattern: '',
-        };
-        setFormData(newFormData);
-        setOriginalData(newFormData);
-      }
-    };
-    loadTransaction();
-  }, [transactionId, fetchTransaction, setError]);
-
-  // Handle input changes
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-    
-    // Clear error for this field
-    if (formErrors[name]) {
-      setFormErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
+    description: '', reference_number: '', status: 'completed',
+    is_recurring: false, recurring_pattern: '',
   };
 
-  // Validate form
+  const [formData, setFormData] = useState(initialFormState);
+  const [formErrors, setFormErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [originalData, setOriginalData] = useState(null);
+  const isEditMode = !!transactionId;
+
+  useEffect(() => {
+    fetchTransactionTypes();
+    fetchTransactionCategories();
+  }, []);
+
+  useEffect(() => {
+    if (transactionId) {
+      fetchTransaction(transactionId).then(tx => {
+        if (tx) {
+          const data = {
+            type: tx.type?.id?.toString() || '',
+            category: tx.category?.id?.toString() || '',
+            amount: tx.amount || '',
+            transaction_date: tx.transaction_date || initialFormState.transaction_date,
+            value_date: tx.value_date || tx.transaction_date || initialFormState.value_date,
+            description: tx.description || '',
+            reference_number: tx.reference_number || '',
+            status: tx.status || 'completed',
+            is_recurring: tx.is_recurring || false,
+            recurring_pattern: tx.recurring_pattern || '',
+          };
+          setFormData(data);
+          setOriginalData(data);
+        }
+      }).catch(() => setError('Failed to load transaction'));
+    } else {
+      setOriginalData(initialFormState);
+    }
+  }, [transactionId]);
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    if (formErrors[name]) setFormErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
   const validateForm = () => {
     const errors = {};
-
-    if (!formData.type) {
-      errors.type = 'Transaction type is required';
-    }
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      errors.amount = 'Valid amount is required';
-    }
-    if (!formData.transaction_date) {
-      errors.transaction_date = 'Transaction date is required';
-    }
+    if (!formData.type) errors.type = 'Transaction type is required';
+    if (!formData.amount || parseFloat(formData.amount) <= 0) errors.amount = 'Valid amount is required';
+    if (!formData.transaction_date) errors.transaction_date = 'Transaction date is required';
     if (formData.value_date && formData.value_date < formData.transaction_date) {
       errors.value_date = 'Value date cannot be before transaction date';
     }
     if (formData.is_recurring && !formData.recurring_pattern) {
-      errors.recurring_pattern = 'Recurring pattern is required for recurring transactions';
+      errors.recurring_pattern = 'Recurring pattern is required';
     }
-
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form submission started', { formData, isEditMode, transactionId });
-
-    if (!validateForm()) {
-      console.log('Form validation failed', formErrors);
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
     setError(null);
     setShowSuccess(false);
 
     try {
-      // Prepare submission data according to API format
-      const submissionData = {
-        cashbook: parseInt(cashbookId), // Include cashbook for both create and update
+      const data = {
+        cashbook: parseInt(cashbookId),
         type: parseInt(formData.type),
-        amount: formData.amount.toString(), // Keep as string as per API
+        amount: formData.amount.toString(),
         transaction_date: formData.transaction_date,
         value_date: formData.value_date || formData.transaction_date,
         status: formData.status,
         is_recurring: formData.is_recurring,
         recurring_pattern: formData.recurring_pattern || '',
-        tags: {} // Empty object as per API
+        category: formData.category ? parseInt(formData.category) : 0,
+        description: formData.description || '',
+        reference_number: formData.reference_number || '',
+        tags: {}
       };
 
-      // Handle category - only include if provided and valid
-      if (formData.category && formData.category !== '') {
-        submissionData.category = parseInt(formData.category);
-      } else {
-        submissionData.category = 0; // Use 0 for no category as per API
-      }
+      const result = isEditMode 
+        ? await updateTransaction(transactionId, data)
+        : await createTransaction(data);
 
-      // Handle optional string fields
-      submissionData.description = formData.description || '';
-      submissionData.reference_number = formData.reference_number || '';
-
-      console.log('Submitting data to API:', JSON.stringify(submissionData, null, 2));
-      console.log('Data types:', Object.keys(submissionData).map(key => ({ [key]: typeof submissionData[key] })));
-
-      let result;
-      if (isEditMode && transactionId) {
-        console.log('Updating transaction with POST:', transactionId);
-        // For update, use POST method and include the transaction ID
-        result = await updateTransaction(transactionId, submissionData);
-        console.log('Update response:', result);
-      } else {
-        console.log('Creating new transaction');
-        result = await createTransaction(submissionData);
-        console.log('Create response:', result);
-      }
-
-      console.log('Transaction saved successfully:', result);
-      
       setShowSuccess(true);
       
-      // Update original data for edit mode
       if (isEditMode) {
         setOriginalData(formData);
       } else {
-        // Reset form for new transactions
-        const resetData = {
-          type: '',
-          category: '',
-          amount: '',
-          transaction_date: new Date().toISOString().split('T')[0],
-          value_date: new Date().toISOString().split('T')[0],
-          description: '',
-          reference_number: '',
-          status: 'completed',
-          is_recurring: false,
-          recurring_pattern: '',
-        };
-        setFormData(resetData);
-        setOriginalData(resetData);
+        setFormData(initialFormState);
+        setOriginalData(initialFormState);
       }
 
       setTimeout(() => {
-        if (onSuccess) {
-          onSuccess(result);
-        } else {
-          navigate(`/stores/${storeId}/cashbooks/${cashbookId}/transactions`);
-        }
+        onSuccess ? onSuccess(result) : navigate(`/stores/${storeId}/cashbooks/${cashbookId}/transactions`);
       }, 1500);
 
     } catch (err) {
-      console.error('Failed to save transaction:', err);
-      console.error('Error details:', err.response?.data);
+      const backendErrors = err.response?.data || {};
+      const fieldErrors = {};
       
-      let errorMessage = 'Failed to save transaction';
-      let fieldErrors = {};
-      
-      if (err.response?.data) {
-        const backendErrors = err.response.data;
-        console.log('Backend validation errors:', backendErrors);
-        
-        // Handle different error formats
-        if (typeof backendErrors === 'object') {
-          Object.keys(backendErrors).forEach(key => {
-            if (key in formData) {
-              fieldErrors[key] = Array.isArray(backendErrors[key])
-                ? backendErrors[key].join(', ')
-                : backendErrors[key];
-            } else {
-              // Handle field-specific errors that might not be in formData
-              fieldErrors[key] = Array.isArray(backendErrors[key])
-                ? backendErrors[key].join(', ')
-                : backendErrors[key];
-            }
-          });
+      Object.entries(backendErrors).forEach(([key, val]) => {
+        fieldErrors[key] = Array.isArray(val) ? val.join(', ') : val;
+      });
 
-          if (Object.keys(fieldErrors).length > 0) {
-            setFormErrors(fieldErrors);
-            errorMessage = 'Please correct the validation errors above';
-          } else if (backendErrors.detail) {
-            errorMessage = backendErrors.detail;
-          } else if (typeof backendErrors === 'string') {
-            errorMessage = backendErrors;
-          }
-        } else if (typeof backendErrors === 'string') {
-          errorMessage = backendErrors;
-        }
-      } else if (err.message) {
-        errorMessage = err.message;
+      if (Object.keys(fieldErrors).length > 0) {
+        setFormErrors(fieldErrors);
+        setError('Please correct the validation errors');
+      } else {
+        setError(backendErrors.detail || err.message || 'Failed to save transaction');
       }
-      
-      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleCancel = () => {
-    if (onCancel) {
-      onCancel();
-    } else {
-      navigate(`/stores/${storeId}/cashbooks/${cashbookId}/transactions`);
-    }
-  };
-
   const handleReset = () => {
-    if (isEditMode && originalData) {
-      // Reset to original data in edit mode
-      setFormData(originalData);
-    } else {
-      // Reset to empty form for new transactions
-      setFormData({
-        type: '',
-        category: '',
-        amount: '',
-        transaction_date: new Date().toISOString().split('T')[0],
-        value_date: new Date().toISOString().split('T')[0],
-        description: '',
-        reference_number: '',
-        status: 'completed',
-        is_recurring: false,
-        recurring_pattern: '',
-      });
-    }
+    setFormData(isEditMode && originalData ? originalData : initialFormState);
     setFormErrors({});
     setError(null);
     setShowSuccess(false);
   };
 
-  // Check if form has changes (for edit mode)
-  const hasChanges = () => {
-    if (!originalData || !isEditMode) return true;
-    
-    return JSON.stringify(formData) !== JSON.stringify(originalData);
-  };
+  const hasChanges = () => !originalData || !isEditMode || JSON.stringify(formData) !== JSON.stringify(originalData);
 
-  // Get transaction type details
-  const getTransactionTypeDetails = (typeId) => {
-    const type = transactionTypes.find(t => t.id === parseInt(typeId));
-    return type || null;
-  };
-
-  const currentType = getTransactionTypeDetails(formData.type);
+  const currentType = transactionTypes.find(t => t.id === parseInt(formData.type));
   const isIncome = currentType?.nature === 'income';
   const isExpense = currentType?.nature === 'expense';
 
-  // Status configuration
-  const getStatusConfig = (status) => {
-    const configs = {
-      completed: { color: 'success', icon: <CheckCircle />, label: 'Completed' },
-      pending: { color: 'warning', icon: <Pending />, label: 'Pending' },
-      cancelled: { color: 'error', icon: <Block />, label: 'Cancelled' }
-    };
-    return configs[status] || configs.completed;
+  const statusConfig = {
+    completed: { color: 'success', icon: <CheckCircle />, label: 'Completed' },
+    pending: { color: 'warning', icon: <Pending />, label: 'Pending' },
+    cancelled: { color: 'error', icon: <Block />, label: 'Cancelled' }
   };
 
-  const transactionTypeOptions = Array.isArray(transactionTypes) ? transactionTypes : [];
-  const transactionCategoryOptions = Array.isArray(transactionCategories) ? transactionCategories : [];
-
-  if (loading && isEditMode && transactionId && !formData.amount) {
+  if (loading && isEditMode && !formData.amount) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
         <Stack alignItems="center" spacing={2}>
           <CircularProgress size={40} />
-          <Typography variant="body1" color="text.secondary">
-            Loading transaction...
-          </Typography>
+          <Typography variant="body1" color="text.secondary">Loading transaction...</Typography>
         </Stack>
       </Box>
     );
@@ -395,182 +181,154 @@ const TransactionForm = ({ transactionId, onSuccess, onCancel }) => {
 
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto', p: 1 }}>
-      {/* Compact Header */}
-      <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
-        <Box
-          sx={{
-            p: 1,
-            borderRadius: 1.5,
-            backgroundColor: theme.palette.primary.main,
-            color: 'white',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Receipt sx={{ fontSize: 24 }} />
-        </Box>
-        <Box flex={1}>
-          <Typography variant="h5" fontWeight="700">
-            {isEditMode ? 'Edit Transaction' : 'New Transaction'}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {isEditMode ? 'Update transaction details' : 'Create new transaction record'}
-          </Typography>
-        </Box>
-        {isEditMode && (
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Chip
-              label="Edit Mode"
-              color="primary"
-              size="small"
-              sx={{ borderRadius: 1 }}
-            />
-            {hasChanges() && (
+      {/* Header with Gradient */}
+      <Box
+        sx={{
+          mb: 3,
+          p: 3,
+          borderRadius: 3,
+          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+          color: 'white',
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            width: '300px',
+            height: '300px',
+            background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
+            borderRadius: '50%',
+            transform: 'translate(30%, -30%)',
+          }
+        }}
+      >
+        <Stack direction="row" alignItems="center" spacing={2} sx={{ position: 'relative', zIndex: 1 }}>
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: 2,
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              backdropFilter: 'blur(10px)',
+              display: 'flex',
+            }}
+          >
+            <Receipt sx={{ fontSize: 32 }} />
+          </Box>
+          <Box flex={1}>
+            <Typography variant="h4" fontWeight="700" sx={{ mb: 0.5 }}>
+              {isEditMode ? 'Edit Transaction' : 'New Transaction'}
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+              {isEditMode ? 'Update transaction details' : 'Create new transaction record'}
+            </Typography>
+          </Box>
+          {isEditMode && (
+            <Stack direction="row" spacing={1}>
               <Chip
-                label="Unsaved Changes"
-                color="warning"
+                label="Edit Mode"
                 size="small"
-                variant="outlined"
-                sx={{ borderRadius: 1 }}
+                sx={{
+                  backgroundColor: 'rgba(255,255,255,0.25)',
+                  color: 'white',
+                  fontWeight: 600,
+                  backdropFilter: 'blur(10px)',
+                }}
               />
-            )}
-          </Stack>
-        )}
-      </Stack>
+              {hasChanges() && (
+                <Chip
+                  label="Unsaved"
+                  size="small"
+                  sx={{
+                    backgroundColor: theme.palette.warning.main,
+                    color: 'white',
+                    fontWeight: 600,
+                  }}
+                />
+              )}
+            </Stack>
+          )}
+        </Stack>
+      </Box>
 
-      {/* Success Alert */}
+      {/* Alerts */}
       {showSuccess && (
-        <Alert 
-          severity="success" 
-          sx={{ 
-            mb: 2, 
-            borderRadius: 1.5,
-            py: 0.5,
-          }} 
-          icon={<CheckCircle fontSize="small" />}
-        >
+        <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }} icon={<CheckCircle />}>
           Transaction {isEditMode ? 'updated' : 'created'} successfully!
         </Alert>
       )}
 
-      {/* Error Alert */}
       {error && (
-        <Alert 
-          severity="error" 
-          sx={{ 
-            mb: 2, 
-            borderRadius: 1.5,
-            py: 0.5,
-          }} 
-          onClose={() => setError(null)}
-        >
+        <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
 
-      {/* Form Errors Display */}
-      {Object.keys(formErrors).length > 0 && (
-        <Alert 
-          severity="error" 
-          sx={{ 
-            mb: 2, 
-            borderRadius: 1.5,
-            py: 0.5,
-          }}
-        >
-          <Typography variant="subtitle2" gutterBottom>
-            Please fix the following errors:
-          </Typography>
-          <ul style={{ margin: 0, paddingLeft: '20px' }}>
-            {Object.entries(formErrors).map(([field, errorMsg]) => (
-              <li key={field}>
-                <Typography variant="body2">
-                  <strong>{field}:</strong> {errorMsg}
-                </Typography>
-              </li>
-            ))}
-          </ul>
-        </Alert>
-      )}
-
-      {/* Compact Form */}
-      <Paper 
-        elevation={1}
+      {/* Enhanced Form */}
+      <Paper
+        elevation={0}
         sx={{
-          p: 2.5,
-          borderRadius: 2,
+          p: 3,
+          borderRadius: 3,
           border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, 0.05)}`,
+          transition: 'all 0.3s ease',
+          '&:hover': {
+            boxShadow: `0 8px 30px ${alpha(theme.palette.common.black, 0.08)}`,
+          }
         }}
       >
         <Box component="form" onSubmit={handleSubmit}>
-          <Grid container spacing={2}>
-            {/* Row 1: Type and Category */}
-            <Grid item xs={12}>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth size="small" error={Boolean(formErrors.type)}>
-                    <InputLabel required>Transaction Type</InputLabel>
-                    <Select
-                      name="type"
-                      value={formData.type}
-                      onChange={handleChange}
-                      label="Transaction Type"
-                      disabled={isSubmitting}
-                    >
-                      <MenuItem value="">
-                        <em>Select type</em>
-                      </MenuItem>
-                      {transactionTypeOptions.map(type => (
-                        <MenuItem key={type.id} value={type.id.toString()}>
-                          <Stack direction="row" alignItems="center" spacing={1}>
-                            {type.nature === 'income' ? (
-                              <TrendingUp sx={{ color: 'success.main', fontSize: 18 }} />
-                            ) : (
-                              <TrendingDown sx={{ color: 'error.main', fontSize: 18 }} />
-                            )}
-                            <span>{type.name}</span>
-                          </Stack>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    {formErrors.type && (
-                      <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
-                        {formErrors.type}
-                      </Typography>
-                    )}
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth size="small" error={Boolean(formErrors.category)}>
-                    <InputLabel>Category</InputLabel>
-                    <Select
-                      name="category"
-                      value={formData.category}
-                      onChange={handleChange}
-                      label="Category"
-                      disabled={isSubmitting}
-                    >
-                      <MenuItem value="">
-                        <em>Select category (optional)</em>
-                      </MenuItem>
-                      {transactionCategoryOptions.map(category => (
-                        <MenuItem key={category.id} value={category.id.toString()}>
-                          {category.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    {formErrors.category && (
-                      <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
-                        {formErrors.category}
-                      </Typography>
-                    )}
-                  </FormControl>
-                </Grid>
-              </Grid>
+          <Grid container spacing={2.5}>
+            {/* Type & Category */}
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth size="small" error={Boolean(formErrors.type)}>
+                <InputLabel required>Transaction Type</InputLabel>
+                <Select
+                  name="type"
+                  value={formData.type}
+                  onChange={handleChange}
+                  label="Transaction Type"
+                  disabled={isSubmitting}
+                >
+                  <MenuItem value=""><em>Select type</em></MenuItem>
+                  {transactionTypes.map(type => (
+                    <MenuItem key={type.id} value={type.id.toString()}>
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        {type.nature === 'income' ? (
+                          <TrendingUp sx={{ color: 'success.main', fontSize: 18 }} />
+                        ) : (
+                          <TrendingDown sx={{ color: 'error.main', fontSize: 18 }} />
+                        )}
+                        <span>{type.name}</span>
+                      </Stack>
+                    </MenuItem>
+                  ))}
+                </Select>
+                {formErrors.type && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{formErrors.type}</Typography>}
+              </FormControl>
             </Grid>
 
-            {/* Row 2: Amount + Status */}
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Category</InputLabel>
+                <Select
+                  name="category"
+                  value={formData.category}
+                  onChange={handleChange}
+                  label="Category"
+                  disabled={isSubmitting}
+                >
+                  <MenuItem value=""><em>None</em></MenuItem>
+                  {transactionCategories.map(cat => (
+                    <MenuItem key={cat.id} value={cat.id.toString()}>{cat.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Amount & Status */}
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
@@ -581,35 +339,32 @@ const TransactionForm = ({ transactionId, onSuccess, onCancel }) => {
                 label="Amount"
                 value={formData.amount}
                 onChange={handleChange}
-                inputProps={{ 
-                  step: '0.01', 
-                  min: '0.01',
-                  placeholder: '0.00'
-                }}
+                inputProps={{ step: '0.01', min: '0.01' }}
                 error={Boolean(formErrors.amount)}
                 helperText={formErrors.amount}
                 disabled={isSubmitting}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <AttachMoney color="primary" fontSize="small" />
+                      <AttachMoney color="primary" />
                     </InputAdornment>
                   ),
                 }}
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: isIncome 
-                      ? alpha(theme.palette.success.main, 0.05)
+                      ? alpha(theme.palette.success.main, 0.08)
                       : isExpense
-                      ? alpha(theme.palette.error.main, 0.05)
+                      ? alpha(theme.palette.error.main, 0.08)
                       : 'transparent',
+                    transition: 'all 0.3s ease',
                   }
                 }}
               />
             </Grid>
 
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth size="small" error={Boolean(formErrors.status)}>
+              <FormControl fullSize="small">
                 <InputLabel>Status</InputLabel>
                 <Select
                   name="status"
@@ -618,29 +373,19 @@ const TransactionForm = ({ transactionId, onSuccess, onCancel }) => {
                   label="Status"
                   disabled={isSubmitting}
                 >
-                  {['pending', 'completed', 'cancelled'].map(status => {
-                    const config = getStatusConfig(status);
-                    return (
-                      <MenuItem key={status} value={status}>
-                        <Stack direction="row" alignItems="center" spacing={1}>
-                          <Box sx={{ color: `${config.color}.main` }}>
-                            {config.icon}
-                          </Box>
-                          <span>{config.label}</span>
-                        </Stack>
-                      </MenuItem>
-                    );
-                  })}
+                  {Object.entries(statusConfig).map(([key, cfg]) => (
+                    <MenuItem key={key} value={key}>
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Box sx={{ color: `${cfg.color}.main`, display: 'flex' }}>{cfg.icon}</Box>
+                        <span>{cfg.label}</span>
+                      </Stack>
+                    </MenuItem>
+                  ))}
                 </Select>
-                {formErrors.status && (
-                  <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
-                    {formErrors.status}
-                  </Typography>
-                )}
               </FormControl>
             </Grid>
 
-            {/* Row 3: Dates */}
+            {/* Dates */}
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
@@ -656,11 +401,7 @@ const TransactionForm = ({ transactionId, onSuccess, onCancel }) => {
                 disabled={isSubmitting}
                 InputLabelProps={{ shrink: true }}
                 InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <CalendarToday color="primary" fontSize="small" />
-                    </InputAdornment>
-                  ),
+                  startAdornment: <InputAdornment position="start"><CalendarToday color="primary" fontSize="small" /></InputAdornment>,
                 }}
               />
             </Grid>
@@ -675,20 +416,16 @@ const TransactionForm = ({ transactionId, onSuccess, onCancel }) => {
                 value={formData.value_date}
                 onChange={handleChange}
                 error={Boolean(formErrors.value_date)}
-                helperText={formErrors.value_date || 'Optional - defaults to transaction date'}
+                helperText={formErrors.value_date}
                 disabled={isSubmitting}
                 InputLabelProps={{ shrink: true }}
                 InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <CalendarToday color="primary" fontSize="small" />
-                    </InputAdornment>
-                  ),
+                  startAdornment: <InputAdornment position="start"><CalendarToday color="primary" fontSize="small" /></InputAdornment>,
                 }}
               />
             </Grid>
 
-            {/* Row 4: Reference */}
+            {/* Reference */}
             <Grid item xs={12}>
               <TextField
                 fullWidth
@@ -697,21 +434,15 @@ const TransactionForm = ({ transactionId, onSuccess, onCancel }) => {
                 label="Reference Number"
                 value={formData.reference_number}
                 onChange={handleChange}
-                placeholder="Optional reference number"
+                placeholder="Optional"
                 disabled={isSubmitting}
-                error={Boolean(formErrors.reference_number)}
-                helperText={formErrors.reference_number}
                 InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Receipt color="primary" fontSize="small" />
-                    </InputAdornment>
-                  ),
+                  startAdornment: <InputAdornment position="start"><Receipt color="primary" fontSize="small" /></InputAdornment>,
                 }}
               />
             </Grid>
 
-            {/* Row 5: Description */}
+            {/* Description */}
             <Grid item xs={12}>
               <TextField
                 fullWidth
@@ -722,10 +453,8 @@ const TransactionForm = ({ transactionId, onSuccess, onCancel }) => {
                 label="Description"
                 value={formData.description}
                 onChange={handleChange}
-                placeholder="Add transaction notes..."
+                placeholder="Add notes..."
                 disabled={isSubmitting}
-                error={Boolean(formErrors.description)}
-                helperText={formErrors.description}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1.5 }}>
@@ -736,14 +465,17 @@ const TransactionForm = ({ transactionId, onSuccess, onCancel }) => {
               />
             </Grid>
 
-            {/* Row 6: Recurring Section */}
+            {/* Recurring */}
             <Grid item xs={12}>
-              <Box sx={{ 
-                p: 2, 
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-                borderRadius: 1,
-                backgroundColor: formData.is_recurring ? alpha(theme.palette.primary.main, 0.05) : 'transparent'
-              }}>
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  border: `2px dashed ${formData.is_recurring ? theme.palette.primary.main : alpha(theme.palette.divider, 0.3)}`,
+                  backgroundColor: formData.is_recurring ? alpha(theme.palette.primary.main, 0.05) : 'transparent',
+                  transition: 'all 0.3s ease',
+                }}
+              >
                 <FormControlLabel
                   control={
                     <Checkbox
@@ -752,68 +484,47 @@ const TransactionForm = ({ transactionId, onSuccess, onCancel }) => {
                       checked={formData.is_recurring}
                       onChange={handleChange}
                       disabled={isSubmitting}
-                      icon={<Repeat fontSize="small" />}
-                      checkedIcon={<Repeat color="primary" fontSize="small" />}
                     />
                   }
-                  label={
-                    <Typography variant="body2" fontWeight="500">
-                      Recurring Transaction
-                    </Typography>
-                  }
+                  label={<Typography variant="body2" fontWeight="600">Recurring Transaction</Typography>}
                 />
-                
                 {formData.is_recurring && (
-                  <Box sx={{ mt: 2, ml: 4 }}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      name="recurring_pattern"
-                      label="Recurring Pattern"
-                      value={formData.recurring_pattern}
-                      onChange={handleChange}
-                      placeholder="e.g., monthly, weekly, daily"
-                      error={Boolean(formErrors.recurring_pattern)}
-                      helperText={formErrors.recurring_pattern || 'Enter the recurrence pattern (monthly, weekly, etc.)'}
-                      disabled={isSubmitting}
-                    />
-                  </Box>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    name="recurring_pattern"
+                    label="Pattern"
+                    value={formData.recurring_pattern}
+                    onChange={handleChange}
+                    placeholder="e.g., monthly, weekly"
+                    error={Boolean(formErrors.recurring_pattern)}
+                    helperText={formErrors.recurring_pattern}
+                    disabled={isSubmitting}
+                    sx={{ mt: 2 }}
+                  />
                 )}
               </Box>
             </Grid>
           </Grid>
 
-          <Divider sx={{ my: 2 }} />
-
-          {/* Action Buttons */}
-          <Stack direction="row" spacing={1} justifyContent="flex-end">
+          {/* Actions */}
+          <Stack direction="row" spacing={1.5} justifyContent="flex-end" sx={{ mt: 3 }}>
             <Button
               variant="outlined"
               color="inherit"
               startIcon={<Cancel />}
-              onClick={handleCancel}
+              onClick={onCancel || (() => navigate(`/stores/${storeId}/cashbooks/${cashbookId}/transactions`))}
               disabled={isSubmitting}
-              size="small"
-              sx={{ 
-                borderRadius: 1,
-                px: 2,
-                minWidth: 'auto',
-              }}
+              sx={{ borderRadius: 2, px: 3 }}
             >
               Cancel
             </Button>
             <Button
               variant="outlined"
-              color="secondary"
               startIcon={<RestartAlt />}
               onClick={handleReset}
               disabled={isSubmitting || (isEditMode && !hasChanges())}
-              size="small"
-              sx={{ 
-                borderRadius: 1,
-                px: 2,
-                minWidth: 'auto',
-              }}
+              sx={{ borderRadius: 2, px: 3 }}
             >
               {isEditMode ? 'Revert' : 'Reset'}
             </Button>
@@ -822,18 +533,17 @@ const TransactionForm = ({ transactionId, onSuccess, onCancel }) => {
               variant="contained"
               startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : <Save />}
               disabled={isSubmitting || (isEditMode && !hasChanges())}
-              size="small"
-              sx={{ 
-                borderRadius: 1,
-                px: 3,
-                fontWeight: 600,
-                minWidth: 'auto',
+              sx={{
+                borderRadius: 2,
+                px: 4,
+                fontWeight: 700,
+                boxShadow: `0 4px 14px ${alpha(theme.palette.primary.main, 0.4)}`,
+                '&:hover': {
+                  boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.5)}`,
+                }
               }}
             >
-              {isSubmitting
-                ? (isEditMode ? 'Updating...' : 'Creating...')
-                : (isEditMode ? 'Update Transaction' : 'Create Transaction')
-              }
+              {isSubmitting ? (isEditMode ? 'Updating...' : 'Creating...') : (isEditMode ? 'Update' : 'Create')}
             </Button>
           </Stack>
         </Box>

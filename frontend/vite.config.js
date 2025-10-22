@@ -8,7 +8,7 @@ export default defineConfig({
     host: true, // Add this if you want to access from other devices
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://192.168.0.92:8000',
         changeOrigin: true,
         secure: false,
       },
