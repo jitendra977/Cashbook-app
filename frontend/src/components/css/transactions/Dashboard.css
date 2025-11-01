@@ -1,409 +1,122 @@
-/* Add these styles to your existing Dashboard.css */
-
-/* Modal Overlay */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-  animation: fadeIn 0.2s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* Modal Content */
-.modal-content {
-  background: white;
-  border-radius: 8px;
-  max-width: 700px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  position: relative;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  animation: slideUp 0.3s ease-out;
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-/* Modal Close Button */
-.modal-close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: transparent;
-  border: none;
-  font-size: 32px;
-  line-height: 1;
-  color: #666;
-  cursor: pointer;
-  padding: 4px 8px;
-  transition: all 0.2s;
-  z-index: 10;
-  width: 40px;
-  height: 40px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-close:hover {
-  background-color: #f0f0f0;
-  color: #333;
-}
-
-.modal-close:active {
-  background-color: #e0e0e0;
-}
-
-/* Dashboard Header Updates */
+/* Dashboard header styles */
 .dashboard-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid #f0f0f0;
+  align-items: flex-end;
+  margin-bottom: 2rem;
 }
 
 .header-left h1 {
-  margin: 0 0 8px 0;
-  font-size: 28px;
-  font-weight: 600;
-  color: #1a1a1a;
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
 }
 
 .header-left p {
-  margin: 0;
-  font-size: 14px;
+  margin: 0.5rem 0 0 0;
   color: #666;
 }
 
 .header-right {
   display: flex;
-  gap: 12px;
   align-items: center;
 }
 
-/* Button Styles */
-.btn {
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 500;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background-color: #4CAF50;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background-color: #45a049;
-}
-
-.btn-success {
-  background-color: #28a745;
-  color: white;
-}
-
-.btn-success:hover:not(:disabled) {
-  background-color: #218838;
-}
-
-.btn-success:active:not(:disabled) {
-  background-color: #1e7e34;
-}
-
-/* Date Range Selector */
+/* Date range selector styles */
 .date-range-selector {
   display: flex;
-  gap: 16px;
+  gap: 2rem;
   align-items: center;
-  margin-bottom: 24px;
-  padding: 16px;
-  background: #f8f9fa;
-  border-radius: 8px;
+  margin-bottom: 1.5rem;
   flex-wrap: wrap;
 }
 
 .date-range-group {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.date-range-group label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-}
-
-.date-range-group input[type="date"] {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-  font-family: inherit;
-}
-
-.date-range-group input[type="date"]:focus {
-  outline: none;
-  border-color: #4CAF50;
-  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
-}
-
-.quick-dates {
-  display: flex;
-  gap: 8px;
-  margin-left: auto;
+  gap: 0.5rem;
 }
 
 .quick-dates button {
-  padding: 8px 16px;
-  font-size: 13px;
-  border: 1px solid #ddd;
-  background: white;
-  border-radius: 4px;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.3rem 1rem;
+  border-radius: 20px;
+  border: none;
+  background: #f5f5f5;
+  color: #333;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s;
 }
 
 .quick-dates button:hover {
-  background-color: #f0f0f0;
-  border-color: #adb5bd;
+  background: #e0e0e0;
 }
 
-/* Dashboard Tabs */
+/* Tabs styles */
 .dashboard-tabs {
   display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
-  border-bottom: 2px solid #f0f0f0;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
-.dashboard-tabs .tab {
-  padding: 12px 24px;
-  background: transparent;
+.tab {
+  background: #f5f5f5;
   border: none;
-  border-bottom: 3px solid transparent;
+  border-radius: 20px;
+  padding: 0.5rem 1.5rem;
   cursor: pointer;
-  font-size: 14px;
   font-weight: 500;
-  color: #666;
-  transition: all 0.2s;
-  position: relative;
-  bottom: -2px;
-}
-
-.dashboard-tabs .tab:hover {
   color: #333;
-  background-color: #f8f9fa;
+  transition: background 0.2s;
 }
 
-.dashboard-tabs .tab.active {
-  color: #4CAF50;
-  border-bottom-color: #4CAF50;
+.tab.active {
+  background: #1976d2;
+  color: #fff;
 }
 
-/* Tab Content */
+/* Tab content */
 .tab-content {
-  min-height: 400px;
+  margin-top: 1rem;
 }
 
-/* Recent Transactions Section */
-.recent-transactions {
-  margin-top: 32px;
-}
-
-.recent-transactions h3 {
-  margin: 0 0 16px 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #1a1a1a;
-}
-
-/* Charts Row */
+/* Charts row */
 .charts-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 24px;
-  margin: 24px 0;
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
 }
 
 .chart-container {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  flex: 1 1 300px;
+  min-width: 300px;
 }
 
-/* Analytics Grid */
+/* Analytics grid */
 .analytics-grid {
-  display: grid;
-  gap: 24px;
-}
-
-.analytics-card {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
 }
 
 .analytics-card.full-width {
-  grid-column: 1 / -1;
+  width: 100%;
 }
 
-/* Responsive Design */
-@media (max-width: 1024px) {
+/* Recent transactions */
+.recent-transactions {
+  margin-top: 2rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
   .charts-row {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 768px) {
-  .dashboard-header {
     flex-direction: column;
-    gap: 16px;
+    gap: 1rem;
   }
-
-  .header-right {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .header-right .btn {
-    flex: 1;
-  }
-
-  .date-range-selector {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .quick-dates {
-    margin-left: 0;
-    width: 100%;
-  }
-
-  .quick-dates button {
-    flex: 1;
-  }
-
-  .dashboard-tabs {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .dashboard-tabs .tab {
-    white-space: nowrap;
-  }
-
-  .modal-content {
-    max-height: 95vh;
-    margin: 10px;
-  }
-}
-
-@media (max-width: 480px) {
-  .header-right {
-    flex-direction: column;
-  }
-
-  .btn {
-    width: 100%;
-    justify-content: center;
-  }
-}
-
-/* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-  .modal-overlay {
-    background-color: rgba(0, 0, 0, 0.7);
-  }
-
-  .modal-content {
-    background: #2d2d2d;
-  }
-
-  .modal-close {
-    color: #e0e0e0;
-  }
-
-  .modal-close:hover {
-    background-color: #3a3a3a;
-    color: #fff;
-  }
-
-  .date-range-selector {
-    background: #2a2a2a;
-  }
-
-  .date-range-group label {
-    color: #e0e0e0;
-  }
-
-  .date-range-group input[type="date"] {
-    background-color: #3a3a3a;
-    border-color: #555;
-    color: #e0e0e0;
-  }
-
-  .quick-dates button {
-    background: #3a3a3a;
-    border-color: #555;
-    color: #e0e0e0;
-  }
-
-  .dashboard-tabs {
-    border-bottom-color: #444;
-  }
-
-  .dashboard-tabs .tab {
-    color: #b0b0b0;
-  }
-
-  .dashboard-tabs .tab:hover {
-    color: #e0e0e0;
-    background-color: #2a2a2a;
-  }
-
-  .chart-container,
-  .analytics-card {
-    background: #2d2d2d;
+  .chart-container {
+    min-width: unset;
   }
 }

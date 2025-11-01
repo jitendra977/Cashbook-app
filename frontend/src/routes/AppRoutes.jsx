@@ -16,8 +16,6 @@ import StoreList from '../pages/store/StoreList'
 import CashbookList from '../pages/cashbook/CashbookList';
 import TransactionsDashboard from '../pages/transactions/TransactionsDashboard';
 import { TransactionsProvider } from '../context/TransactionsContext';
-import TransactionForm from '../components/transactions/TransactionForm';
-import SettingsPage from '../pages/SettingsPage';
 
 const AppRoutes = () => {
   const router = createBrowserRouter([
@@ -79,16 +77,6 @@ const AppRoutes = () => {
         </ProtectedRoute>
       ),
     },
-     {
-      path: "/settings",
-      element: (
-        <ProtectedRoute>
-          <DashboardLayout>
-            <SettingsPage />
-          </DashboardLayout>
-        </ProtectedRoute>
-      ),
-    },
     {
       path: "/verify-email/:token",
       element: (
@@ -131,26 +119,7 @@ const AppRoutes = () => {
         </ProtectedRoute>
       ),
     },
-    {
-      path: "/stores/:storeId/cashbooks/:cashbookId/transactions/add",
-      element: (
-        <ProtectedRoute>
-          <DashboardLayout>
-            <TransactionForm />
-          </DashboardLayout>
-        </ProtectedRoute>
-      ),
-    },
-    {
-      path: "/stores/:storeId/cashbooks/:cashbookId/transactions/:transactionId/edit",
-      element: (
-        <ProtectedRoute>
-          <DashboardLayout>
-            <TransactionForm />
-          </DashboardLayout>
-        </ProtectedRoute>
-      ),
-    },
+
     {
       path: "*",
       element: (

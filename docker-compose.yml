@@ -6,10 +6,12 @@ services:
     container_name: cashbook_backend
     volumes:
       - ./backend:/app
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     environment:
       - DEBUG=1
+    networks:
+      - app-network
 
   frontend:
     build: ./frontend
@@ -17,9 +19,30 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     environment:
       - NODE_ENV=development
+      - VITE_API_BASE_URL=/api
     depends_on:
       - backend
+    networks:
+      - app-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: cashbook_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

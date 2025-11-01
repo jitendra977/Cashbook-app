@@ -1,39 +1,77 @@
-# =================== Python ===================
+# Python
 __pycache__/
 *.py[cod]
-*.sqlite3
+*.pyo
+*.pyd
+*.pyc
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.virtualenv/
+
+# Django
 *.log
 *.pot
 *.pyc
-*.pyo
-*.pyd
-*.env
-.env.*
-!.env.example
-
-# Django static/media
-staticfiles/
+db.sqlite3
 media/
+staticfiles/
 
-# =================== Node / Frontend ===================
+# Migrations
+*/migrations/
+!*/migrations/__init__.py
+
+# Node.js / Frontend
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 dist/
 build/
-.vite/
-.bun/
-*.lock
-*.tgz
+.cache/
+*.tsbuildinfo
 
-# =================== Docker ===================
-*.pid
-*.seed
-*.pid.lock
-docker-compose.override.yml
+# React
+*.env.local
+*.env.development.local
+*.env.test.local
+*.env.production.local
 
-# =================== IDE / OS ===================
-.vscode/
+# Coverage reports
+coverage/
+htmlcov/
+.nyc_output/
+*.lcov
+
+# JetBrains IDEs
 .idea/
-*.swo
-*.swp
+*.iml
+
+# VS Code
+.vscode/
+
+# macOS
 .DS_Store
+
+# Windows
 Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+.cache/
+
+# Environment variables
+.env
+.env.*
+
+# Others
+*.sqlite3
+*.db
+*.bak
+*.swp
+*.swo
