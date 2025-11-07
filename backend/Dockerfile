@@ -2,7 +2,7 @@
 FROM python:3.13-slim
 
 # Create and set work directory
-WORKDIR /backend
+WORKDIR /app
 
 # Prevent Python from creating .pyc files and enable unbuffered output
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -13,17 +13,20 @@ RUN pip install --upgrade pip
 
 # Copy dependencies file
 COPY requirements.txt .
-
-# Install dependencies (Gunicorn included)
 RUN pip install --no-cache-dir -r requirements.txt
-# If Gunicorn is not listed in the file, you can do:
-# RUN pip install --no-cache-dir gunicorn
 
-# Copy the full project
+# Copy the project
 COPY . .
 
-# Expose port for the app
+# Copy and make entrypoint executable
+COPY ./entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Expose Django port
 EXPOSE 8000
 
-# Start using Gunicorn (change "myproject" to your Django project name)
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "cashbook_backend.wsgi:application"]
+# Use entrypoint (runs migrate, creates superuser, then starts Gunicorn)
+ENTRYPOINT ["/entrypoint.sh"]
+
+# Default Gunicorn command (passed to entrypoint)
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "cashbook_backend.wsgi:application", "--workers", "3", "--log-level", "info"]

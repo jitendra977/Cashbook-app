@@ -1,6 +1,9 @@
 version: "3.9"
 
 services:
+  # ------------------------------
+  # Backend (Django or FastAPI)
+  # ------------------------------
   backend:
     build: ./backend
     container_name: cashbook_backend
@@ -10,9 +13,16 @@ services:
       - "8000"
     environment:
       - DEBUG=1
+      - DJANGO_SETTINGS_MODULE=cashbook_backend.settings
+      - DJANGO_SUPERUSER_USERNAME=admin
+      - DJANGO_SUPERUSER_PASSWORD=adminpass
+      - DJANGO_SUPERUSER_EMAIL=admin@example.com
     networks:
       - app-network
 
+  # ------------------------------
+  # Frontend (React / Vite)
+  # ------------------------------
   frontend:
     build: ./frontend
     container_name: cashbook_frontend
@@ -29,6 +39,9 @@ services:
     networks:
       - app-network
 
+  # ------------------------------
+  # Nginx Reverse Proxy
+  # ------------------------------
   nginx:
     image: nginx:alpine
     container_name: cashbook_nginx
@@ -43,6 +56,82 @@ services:
     networks:
       - app-network
 
+  # ------------------------------
+  # Portainer (Docker Management UI)
+  # ------------------------------
+  portainer:
+    container_name: portainer
+    image: portainer/portainer-ce:latest
+    restart: always
+    ports:
+      - "9000:9000"
+    environment:
+      TZ: Asia/Tokyo
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./portainer_data:/data
+    networks:
+      - app-network
+
+  # ------------------------------
+  # Home Assistant
+  # ------------------------------
+  homeassistant:
+    container_name: homeassistant
+    image: ghcr.io/home-assistant/home-assistant:stable
+    restart: unless-stopped
+    ports:
+      - "8123:8123"
+    volumes:
+      - ./homeassistant_config:/config
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - app-network
+
+  # ------------------------------
+  # Pi-hole
+  # ------------------------------
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    restart: unless-stopped
+    ports:
+      - "5354:53/tcp"
+      - "5354:53/udp"
+      - "8080:80/tcp"
+      - "4443:443/tcp"
+    environment:
+      TZ: Asia/Tokyo
+      FTLCONF_webserver_api_password: "cashbookadmin"
+      FTLCONF_dns_listeningMode: 'all'
+    volumes:
+      - ./etc-pihole:/etc/pihole
+    cap_add:
+      - NET_ADMIN
+    networks:
+      - app-network
+
+  # ------------------------------
+  # File Browser
+  # ------------------------------
+  filebrowser:
+    image: filebrowser/filebrowser:latest
+    container_name: filebrowser
+    restart: unless-stopped
+    user: "1000:1000"
+    command: --database /database/filebrowser.db --root /srv --address 0.0.0.0
+    volumes:
+      - ./:/srv
+      - ./filebrowser_db:/database
+      - ./filebrowser_config:/config
+    ports:
+      - "8095:80"
+    networks:
+      - app-network
+
+# ------------------------------
+# Shared Network
+# ------------------------------
 networks:
   app-network:
     driver: bridge
